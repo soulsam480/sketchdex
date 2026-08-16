@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sketchdex": {
+      "command": "node",
+      "args": ["mcp/server.js"]
+    }
+  }
+}

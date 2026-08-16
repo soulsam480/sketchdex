@@ -1,0 +1,355 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #0b0b0c;
+  --color-ink-900: #101012;
+  --color-ink-850: #141417;
+  --color-ink-800: #1a1a1e;
+  --color-ink-700: #26262b;
+  --color-graphite: #8b8b93;
+  --color-chalk: #e8e8ea;
+  --color-violet: #6965db;
+
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, monospace;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-ink-950);
+    color: var(--color-chalk);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* Tailwind v4 resets buttons to cursor:default */
+  button,
+  a,
+  label,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-violet) 40%, transparent);
+  }
+}
+
+@utility hairline {
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+@utility hairline-b {
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+@utility hairline-t {
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-graphite);
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.12) transparent;
+}
+
+/* Excalidraw fills its container */
+.excalidraw-wrapper {
+  height: 100%;
+  width: 100%;
+}
+
+/* Dark chrome, honest canvas. Excalidraw's dark theme runs every canvas pixel
+   (and every colour swatch) through invert(93%) hue-rotate(180deg), so a hex
+   in the file is displayed as a different colour. Off, permanently: the
+   background is whatever viewBackgroundColor says and #ffc21a is #ffc21a. */
+.excalidraw.theme--dark {
+  --theme-filter: none;
+}
+
+/* The transparent swatch ships as a light checkerboard for white paper. On
+   dark chrome with the filter off it read as a stray light tile; a quiet dark
+   check says "nothing" without shouting. */
+.excalidraw .color-picker__button.is-transparent,
+.excalidraw .color-picker-label-swatch {
+  background: repeating-conic-gradient(#2c2c2c 0 25%, #1c1c1c 0 50%) 0 0 / 10px 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  ELECTRON SHELL                                            */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* hiddenInset title bar: leave room for the traffic lights, and let the
+   header itself drag the window while its controls stay clickable */
+[data-electron] .titlebar-inset {
+  padding-left: 76px;
+}
+
+[data-electron] .app-drag {
+  -webkit-app-region: drag;
+}
+
+[data-electron] .app-drag button,
+[data-electron] .app-drag input,
+[data-electron] .app-drag a {
+  -webkit-app-region: no-drag;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  TOOLBAR RETUNE                                            */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* Excalidraw has no API for tool order or number shortcuts. The toolbar is a
+   grid of labelled radios, so `order` re-sequences it without patching the
+   package; the digits themselves are re-bound in src/lib/toolbar.ts. */
+
+/* selection leads, ahead of hand, so the digits read 1 → 0 left to right */
+.excalidraw .App-toolbar .Stack_horizontal > label:has(> input[data-testid="toolbar-lock"]) {
+  order: -3;
+}
+.excalidraw .App-toolbar .Stack_horizontal > .App-toolbar__divider:first-of-type {
+  order: -2;
+}
+.excalidraw .App-toolbar .Stack_horizontal > label:has(> input[data-testid="toolbar-selection"]) {
+  order: -1;
+}
+
+/* image moves past eraser, keeping the divider and overflow menu at the end */
+.excalidraw .App-toolbar .Stack_horizontal > label:has(> input[data-testid="toolbar-image"]) {
+  order: 1;
+}
+.excalidraw .App-toolbar .Stack_horizontal > .App-toolbar__divider:last-of-type {
+  order: 2;
+}
+.excalidraw .App-toolbar .Stack_horizontal > .App-toolbar__extra-tools-trigger {
+  order: 3;
+}
+
+/* Drop every native key hint and re-issue our own, so hand can gain a digit
+   and image can lose one. Positioned to match the original exactly. */
+.excalidraw .App-toolbar .ToolIcon__keybinding {
+  display: none;
+}
+
+.excalidraw .App-toolbar .Stack_horizontal > label.ToolIcon .ToolIcon__icon::after {
+  content: var(--sd-key, "");
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.625rem;
+  font-family: var(--ui-font);
+  color: var(--keybinding-color);
+  user-select: none;
+  pointer-events: none;
+}
+
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-selection"]) {
+  --sd-key: "1";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-hand"]) {
+  --sd-key: "2";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-rectangle"]) {
+  --sd-key: "3";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-diamond"]) {
+  --sd-key: "4";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-ellipse"]) {
+  --sd-key: "5";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-arrow"]) {
+  --sd-key: "6";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-line"]) {
+  --sd-key: "7";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-freedraw"]) {
+  --sd-key: "8";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-text"]) {
+  --sd-key: "9";
+}
+.excalidraw .App-toolbar label:has(> input[data-testid="toolbar-eraser"]) {
+  --sd-key: "0";
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  FONT SIZE CONTROL                                         */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* Sits in Excalidraw's footer slot and borrows its own tokens, so it reads as
+   part of the app rather than bolted on. */
+.sd-fontsize {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  /* Excalidraw spaces its own footer islands 10px apart; footer children it
+     did not author get no gap, so match it by hand */
+  margin-left: 10px;
+  height: 36px;
+  padding: 0 4px;
+  border-radius: var(--border-radius-lg, 10px);
+  background: var(--island-bg-color);
+  box-shadow: var(--shadow-island);
+  font-family: var(--ui-font);
+}
+
+.sd-fontsize__step {
+  width: 24px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-on-surface);
+  opacity: 0.55;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sd-fontsize__step:hover {
+  background: var(--button-hover-bg);
+  opacity: 1;
+}
+
+.sd-fontsize__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 2px 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: text;
+}
+
+.sd-fontsize__field:hover {
+  background: var(--button-hover-bg);
+}
+
+.sd-fontsize__field:focus-within {
+  background: var(--button-hover-bg);
+  border-color: var(--color-primary);
+}
+
+.sd-fontsize__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 26px;
+  color: var(--color-on-surface);
+  opacity: 0.45;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.sd-fontsize__unit {
+  margin-left: 1px;
+  color: var(--color-on-surface);
+  opacity: 0.4;
+  font-family: var(--ui-font);
+  font-size: 11px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.sd-fontsize__field input {
+  width: 26px;
+  text-align: right;
+  border: 0;
+  background: transparent;
+  color: var(--color-on-surface);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  padding: 0;
+}
+
+/* the wrapper carries the focus ring; the input must not draw a second one
+   inside it (Excalidraw styles :focus-visible globally) */
+.sd-fontsize__field input:focus,
+.sd-fontsize__field input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: 0;
+}
+
+.sd-fontsize__caret {
+  width: 14px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  color: var(--color-on-surface);
+  opacity: 0.4;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.sd-fontsize__caret:hover {
+  opacity: 0.9;
+}
+
+/* the scrim closes the menu on any outside click */
+.sd-fontsize__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+}
+
+.sd-fontsize__menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--island-bg-color);
+  box-shadow: var(--shadow-island);
+}
+
+.sd-fontsize__menu button {
+  min-width: 52px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-on-surface);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  cursor: pointer;
+}
+
+.sd-fontsize__menu button:hover {
+  background: var(--button-hover-bg);
+}
+
+.sd-fontsize__menu button.is-active {
+  background: var(--color-surface-primary-container);
+  color: var(--color-on-primary-container);
+}
