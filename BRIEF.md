@@ -20,6 +20,9 @@ the ChatGPT desktop app also reads). If you have tools named `list_scenes`,
 `describe_scene`, `add_elements`, `render_scene` and so on, use them - skip to
 **The element format**. Argument names match the JSON fields below.
 
+(The same tools are also served over HTTP at `POST localhost:5173/mcp`, for a
+client you can only hand a URL.)
+
 ### 2. Shell (any agent that can run bash)
 
 The app's dev server exposes the identical surface at `POST /api/agent/:op` on
@@ -79,10 +82,14 @@ back. When the full image is too big to travel in one result you get a
 downscaled JPEG preview inline plus the path to the full-resolution PNG, so
 there is always something to look at. `inlined` says which you got.
 
-Prefer a `region` over a bigger image: a whole board scaled to fit is
-unreadable at any resolution. Take `bounds` from `describe` and walk it:
+A tall or wide page (long edge more than about twice the short one) comes back
+as a few **tiles** cut along its length, each tagged with the scene box it
+shows; `tiles: 1` forces one image. To look closely at one part, render a
+`region`, taking the box from `describe`'s `bounds` or a tile's `region`:
 `{"scene":"Brain Dump","region":{"x":0,"y":0,"width":900,"height":700},"scale":2}`.
-`ids` renders just those elements.
+`ids` renders just those elements. Draw, render, look, fix: anything visual
+handed over without having looked at it is a guess. First render after a code
+change takes ~30s (it builds the page); after that ~1.5s.
 
 Oversized **text** results (a `read` of a big scene) are written to a file the
 same way rather than truncated, with the path returned.
@@ -273,10 +280,13 @@ under **Paper and ink** are starting points, not a palette to choose from.
 
 ### Check your layout
 
-`check` (`check_scene` over MCP) reports text hidden behind later shapes,
-captions overflowing their panel, labels too tall for their container,
-zero-size elements, dangling bindings, strays and duplicates - with element ids.
-Cheaper than a render; run it after each batch.
+`check` (`check_scene` over MCP) finds layout problems by geometry, each with
+the element ids so the fix is one `update`: text hidden behind a later filled
+shape, labels overlapping, a line running through a label, text escaping or
+crowding its panel, a bound label too tall for its container, zero-size
+elements, dangling bindings, strays, duplicates. Cheaper than a render; run it
+after each batch. What it cannot check is whether the drawing is any good -
+render it and look.
 
 ### Shorthand
 
@@ -337,9 +347,6 @@ Two snapshots of a small scene cost under 1KB, so take them freely.
 - **Bound text is a separate element** with `containerId` pointing at its shape;
   the shape lists it in `boundElements`. Changing a shape's label means updating
   that text element, not the shape.
-- **Text width is estimated.** There is no canvas to measure in on the server, so
-  it is calibrated against Lucas's real scenes and lands within ~10%. Fine for
-  layout and wrapping, not for pixel-tight alignment.
 - **Don't set `index`.** It is a fractional z-order key ("a0", "a1", "b00") that
   must sort correctly against what is already there. It is computed for you.
 - **`replace` destroys everything else on the canvas.** Snapshotted, but reach

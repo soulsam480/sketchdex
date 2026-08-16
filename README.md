@@ -48,8 +48,8 @@ Dock icon and its own window; `⌘K` works there.
 ## Agents
 
 Claude and Codex can read and draw on these scenes. Everything runs on port
-5173 alongside the app; `AGENTS.md` is the reference (written for the model, not
-for you).
+5173 alongside the app; `BRIEF.md` is the reference (written for the model, not
+for you), and `AGENTS.md` is for agents changing this codebase.
 
 Registered already: Claude Code at user scope, Codex in `~/.codex/config.toml`.
 Both launch `node mcp/server.js` over stdio, which talks to the vault directly
@@ -155,16 +155,24 @@ backup.
 | `server/store.js` | The vault: atomic file writes, index rebuild, trash |
 | `server/middleware.js` | `/api/*`, `/mcp`, mounted on dev + preview |
 | `server/agent.js` | The agent surface; every mutation snapshots first |
-| `server/elements.js` | Completes partial elements: indices, seeds, bindings, labels |
+| `server/elements.js` | Completes partial elements: indices, seeds, bindings, labels, text metrics |
+| `server/geometry.js` | Parametric shapes, repeat/mirror, `{"path": ...}` shorthand |
+| `server/sketch.js` | The hand-drawn contract: re-spaced anchors, curves, roughness, fill |
+| `server/svg.js` | SVG to elements, through the sketch pass |
+| `server/paper.js` | Paper and ink: dark paper by default, ink follows paper |
+| `server/inspect.js` | `check_scene`: layout problems found by geometry |
 | `server/history.js` | Snapshot store, gzipped and capped |
 | `server/watch.js` | Watches the vault, pushes SSE, catches direct file edits |
 | `mcp/tools.js` | Tool definitions, shared by both transports |
 | `mcp/server.js` | stdio entry (Claude Code, Codex) |
 | `mcp/render.js` | Scene to PNG via a hidden Electron window |
+| `scripts/patch-excalidraw.mjs` | Postinstall: retune the colour picker for dark paper |
+| `scripts/measure-fonts.mjs` | Regenerate `server/font-metrics.json` from Excalidraw's fonts |
 
 ## Notes
 
-- The editor is dark-themed; thumbnails render light, matching Excalidraw's own
-  export behaviour.
+- The chrome is dark and so is new paper (`#121212`), but nothing is ever
+  colour-inverted: the canvas, thumbnails and renders all show hexes exactly as
+  written. Paper colour is per scene (`viewBackgroundColor`).
 - `onChange` deliberately never touches React state. The save indicator writes
   straight to the DOM, otherwise every stroke would re-render the canvas host.
