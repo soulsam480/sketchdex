@@ -19,6 +19,8 @@ There is a safety contract, described under **History**. Read it before writing.
 If you have tools named `list_scenes`, `describe_scene`, `add_elements`,
 `render_scene` and so on, the server is registered with your client: use them
 and skip to **The element format**. Argument names match the JSON fields below.
+For anything about setup (installing on a client, the vault, the app,
+rendering, an error), `sketchdex_docs` has the manual by topic.
 
 (The same tools are also served over HTTP at `POST localhost:5173/mcp` while
 the app is running, for a client you can only hand a URL.)

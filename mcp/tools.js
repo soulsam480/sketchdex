@@ -6,9 +6,12 @@ import { createRequire } from "node:module";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { renderScene } from "./render.js";
+import { TOPICS, TOPIC_NAMES, readTopic } from "./docs.js";
 
 /**
  * The Sketchdex tool set, independent of how it is transported.
@@ -73,7 +76,9 @@ export const INSTRUCTIONS = [
   "something - a character, object, illustration - write it as ONE SVG and call",
   "import_svg; never assemble a figure from shapes. Use add_elements for",
   "diagrams, text, boxes, arrows and detail strokes. describe_scene before you",
-  "draw, render_scene after, and fix what looks wrong.",
+  "draw, render_scene after, and fix what looks wrong. For anything about",
+  "setup - installing on a client, where scenes are stored, the app, what",
+  "rendering needs, or an error - call sketchdex_docs before guessing.",
 ].join(" ");
 
 const LABEL = {
@@ -457,6 +462,21 @@ const TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "sketchdex_docs",
+    description:
+      "The manual, for answering the user's questions and fixing problems without guessing: install on any client, where scenes are stored and how to move the vault, the library app, what rendering needs, every tool, the drawing contract, and troubleshooting for the errors that come up. No topic returns the index.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          enum: [...TOPIC_NAMES, "all"],
+          description: "One of: " + TOPIC_NAMES.join(", ") + ". Omit for the index; `all` for the whole manual.",
+        },
+      },
+    },
+  },
+  {
     name: "snapshot_scene",
     description:
       "Stash the current state without changing anything, so it can be restored from the history sidebar. Do this before editing a .excalidraw file directly with your own file tools - every other tool here snapshots on its own.",
@@ -510,6 +530,7 @@ const makeHandlers = (api) => ({
     vault: api.vault,
     node: process.version,
   }),
+  sketchdex_docs: async (a) => ({ _text: await readTopic(a.topic, { tools: TOOLS }) }),
   snapshot_scene: (a) => api.snapshot(a.scene, a.label),
   list_history: (a) => api.listHistory(a.scene),
   restore_snapshot: (a) => api.restoreSnapshot(a.scene, a.snapshot),
@@ -691,6 +712,11 @@ export async function dispatch(api, name, rawArgs) {
       };
     }
 
+    // prose (the docs) travels as it is; JSON-wrapping markdown only adds escapes
+    if (typeof result?._text === "string") {
+      return { content: [{ type: "text", text: result._text }] };
+    }
+
     const text = JSON.stringify(result, null, 1);
     if (text.length > TEXT_LIMIT) {
       /**
@@ -726,15 +752,38 @@ export async function dispatch(api, name, rawArgs) {
   }
 }
 
+/**
+ * The docs as MCP resources, `sketchdex://docs/<topic>`, for clients that
+ * surface resources. The tool carries the same text for the ones that do not.
+ */
+export const RESOURCES = TOPICS.map((t) => ({
+  uri: `sketchdex://docs/${t.name}`,
+  name: t.name,
+  title: `sketchdex docs: ${t.name}`,
+  description: t.summary,
+  mimeType: "text/markdown",
+}));
+
+export async function readResource(uri, tools = TOOLS) {
+  const match = /^sketchdex:\/\/docs\/([a-z]+)$/.exec(uri);
+  if (!match) throw new Error(`unknown resource: ${uri}`);
+  const text = await readTopic(match[1], { tools });
+  return { contents: [{ uri, mimeType: "text/markdown", text }] };
+}
+
+export const CAPABILITIES = { tools: { listChanged: true }, resources: {} };
+
 /** MCP Server speaking for a fixed code version, used by the HTTP transport. */
 export function createSketchdexServer(api) {
   const server = new Server(
     { name: "sketchdex", version: VERSION },
-    { capabilities: { tools: { listChanged: true } }, instructions: INSTRUCTIONS },
+    { capabilities: CAPABILITIES, instructions: INSTRUCTIONS },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
   server.setRequestHandler(CallToolRequestSchema, (request) =>
     dispatch(api, request.params.name, request.params.arguments ?? {}),
   );
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: RESOURCES }));
+  server.setRequestHandler(ReadResourceRequestSchema, (request) => readResource(request.params.uri));
   return server;
 }

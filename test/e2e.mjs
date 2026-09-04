@@ -77,7 +77,11 @@ const version = spawnSync(process.execPath, [bin, "--version"], { encoding: "utf
 assert(version === packed[0].version, `--version printed ${version}, expected ${packed[0].version}`);
 const printedVault = spawnSync(process.execPath, [bin, "vault", "--vault", vault], { encoding: "utf8" }).stdout.trim();
 assert(path.resolve(printedVault) === path.resolve(vault), `vault flag not honoured: ${printedVault}`);
-log(`cli ok (${version})`);
+const docsOut = spawnSync(process.execPath, [bin, "docs", "install"], { encoding: "utf8" });
+assert(docsOut.status === 0 && /Claude Code/.test(docsOut.stdout) && /Cursor/.test(docsOut.stdout), "`sketchdex docs install` did not print the install guide");
+const docsBad = spawnSync(process.execPath, [bin, "docs", "nope"], { encoding: "utf8" });
+assert(docsBad.status === 2 && /Topics:/.test(docsBad.stderr), "`sketchdex docs nope` did not fail with the topic list");
+log(`cli ok (${version}), docs print`);
 
 /* ─── 3. MCP over stdio ─────────────────────────────────────────────── */
 
@@ -95,9 +99,10 @@ const client = new Client({ name: "sketchdex-e2e", version: "0" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();
-assert(tools.length === 18, `expected 18 tools, got ${tools.length}`);
+assert(tools.length === 19, `expected 19 tools, got ${tools.length}`);
 assert(/hand-drawn/i.test(client.getInstructions() ?? ""), "server instructions missing");
-log("mcp connected, 18 tools");
+assert(/sketchdex_docs/.test(client.getInstructions() ?? ""), "server instructions do not point at the docs");
+log("mcp connected, 19 tools");
 
 const text = (r) => r.content.find((c) => c.type === "text")?.text ?? "";
 const call = async (name, args) => {
@@ -105,6 +110,19 @@ const call = async (name, args) => {
   if (r.isError) fail(`${name}: ${text(r)}\n${serverErr.slice(-800)}`);
   return r;
 };
+
+// the manual reaches the agent three ways: the tool, the resources, and the CLI above
+const docsTool = text(await call("sketchdex_docs", { topic: "troubleshooting" }));
+assert(docsTool.startsWith("# Troubleshooting") && /SKETCHDEX_BROWSER/.test(docsTool), "sketchdex_docs did not return the troubleshooting topic as markdown");
+const docsIndex = text(await call("sketchdex_docs", {}));
+assert(/- install:/.test(docsIndex) && /- drawing:/.test(docsIndex), "sketchdex_docs without a topic did not return the index");
+const docsTools = text(await call("sketchdex_docs", { topic: "tools" }));
+assert(/^19 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
+const { resources } = await client.listResources();
+assert(resources.length === 7 && resources.every((r) => r.uri.startsWith("sketchdex://docs/")), `expected 7 docs resources, got ${resources.length}`);
+const resource = await client.readResource({ uri: "sketchdex://docs/install" });
+assert(resource.contents[0].mimeType === "text/markdown" && /claude mcp add/.test(resource.contents[0].text), "docs resource did not read back");
+log("docs via tool and resources ok");
 
 const made = JSON.parse(text(await call("create_scene", {
   name: "E2E",

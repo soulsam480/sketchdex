@@ -20,21 +20,28 @@ Needs Node 20 or newer. Rendering (`render_scene`) needs a Chromium-based
 browser on the machine: Chrome, Chromium, Edge or Brave. Everything else works
 without one.
 
+The quickest way is to let the agent you already have do it. Paste this into
+any agent that can run commands:
+
+> install the sketchdex mcp server for me. run `npx -y sketchdex docs install` for the steps.
+
+Or by hand:
+
 **Claude Code**
 
 ```bash
 claude mcp add --scope user sketchdex -- npx -y sketchdex
 ```
 
-**Codex** (`~/.codex/config.toml`)
+**Codex**
 
-```toml
-[mcp_servers.sketchdex]
-command = "npx"
-args = ["-y", "sketchdex"]
+```bash
+codex mcp add sketchdex -- npx -y sketchdex
 ```
 
-**Cursor, Claude Desktop, Windsurf, anything with an `mcpServers` block**
+**Cursor**
+
+[Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=sketchdex&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInNrZXRjaGRleCJdfQ==), or in `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -47,12 +54,33 @@ args = ["-y", "sketchdex"]
 }
 ```
 
-Then, in a session: *draw me how the event loop works*.
+**VS Code**
+
+```bash
+code --add-mcp '{"name":"sketchdex","command":"npx","args":["-y","sketchdex"]}'
+```
+
+**Claude Desktop, Windsurf, Gemini CLI, anything else** takes the same
+`mcpServers` block as Cursor, or the command `npx -y sketchdex` as a stdio
+server. `npx -y sketchdex docs install` has the exact file for each.
+
+Then, in a session: *draw me how the event loop works using sketchdex*.
 
 Scenes are saved to `~/Documents/sketchdex`. Point them somewhere else with
-`SKETCHDEX_VAULT=/path/to/folder` in the server's environment, or
-`--vault /path/to/folder` after the package name. An iCloud or Dropbox folder
-works.
+`--vault /path/to/folder` after the package name, or `SKETCHDEX_VAULT` in the
+server's environment. An iCloud or Dropbox folder works.
+
+## Docs, for the agent
+
+The manual ships inside the package so an agent can answer setup questions
+and fix problems without anyone reading a page:
+
+- `npx -y sketchdex docs [topic]` prints it (topics: `install`, `vault`,
+  `app`, `rendering`, `tools`, `drawing`, `troubleshooting`, or `all`).
+- The `sketchdex_docs` tool returns the same text once the server is
+  connected, and the server instructions tell the agent to use it for
+  anything about setup or errors.
+- The same topics are MCP resources at `sketchdex://docs/<topic>`.
 
 ## The app
 
@@ -71,7 +99,7 @@ The same process serves the tools over HTTP at `POST /mcp` and as plain REST at
 
 ## What the agent gets
 
-Eighteen tools over stdio. The ones that matter:
+Nineteen tools over stdio. The ones that matter:
 
 | Tool | Does |
 |---|---|
@@ -82,6 +110,7 @@ Eighteen tools over stdio. The ones that matter:
 | `render_scene` | A real canvas render as PNG, whole scene or a region, so the agent can look at its own work. |
 | `check_scene` | Layout problems found by geometry: hidden text, overlapping labels, dangling arrows, strays. |
 | `snapshot_scene`, `list_history`, `restore_snapshot` | The safety net. Every write snapshots the previous state first. |
+| `sketchdex_docs` | The manual by topic, so the agent can answer setup questions and fix errors itself. |
 
 The full manual the agent reads is [`BRIEF.md`](BRIEF.md): the element format,
 the hand-drawn contract (roughness, sparse anchors, flat colour, no clip-art),

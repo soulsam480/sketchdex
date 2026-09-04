@@ -11,6 +11,7 @@ import os from "node:os";
  *   sketchdex mcp        same thing, spelled out
  *   sketchdex app        the library and editor in your browser
  *   sketchdex vault      print the vault path and exit
+ *   sketchdex docs       print the manual (or one topic: docs install)
  *
  * Flags, all optional:
  *   --vault <dir>        where scenes live (default ~/Documents/sketchdex,
@@ -55,6 +56,8 @@ const HELP = `sketchdex ${version}
   sketchdex              MCP server over stdio (for Claude Code, Codex, Cursor, ...)
   sketchdex app          open the scene library in your browser
   sketchdex vault        print where scenes are stored
+  sketchdex docs [topic] the manual; topics: install, vault, app, rendering,
+                         tools, drawing, troubleshooting, or all
 
   --vault <dir>          scene folder (default ~/Documents/sketchdex)
   --port <n>             app: port to listen on (default 5173)
@@ -62,8 +65,10 @@ const HELP = `sketchdex ${version}
 
   Register with Claude Code:
     claude mcp add --scope user sketchdex -- npx -y sketchdex
+  Any other client: run \`sketchdex docs install\`, or hand your agent
+  this command and let it do the setup.
 
-  Docs: https://github.com/lucasr1b/sketchdex
+  Source: https://github.com/lucasr1b/sketchdex
 `;
 
 if (flags.help) {
@@ -88,6 +93,15 @@ if (command === "mcp") {
 } else if (command === "vault") {
   const { createStore } = await import("../server/store.js");
   process.stdout.write(`${createStore().vault}\n`);
+} else if (command === "docs") {
+  const { readTopic } = await import("../mcp/docs.js");
+  const { TOOLS } = await import("../mcp/tools.js");
+  try {
+    process.stdout.write(await readTopic(positional[1], { tools: TOOLS }));
+  } catch (err) {
+    process.stderr.write(`sketchdex docs: ${err.message}\n`);
+    process.exit(2);
+  }
 } else if (command === "app") {
   const { startAppServer, hasBuild } = await import("../server/serve.js");
   if (!hasBuild()) {

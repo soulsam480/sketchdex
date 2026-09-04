@@ -7,8 +7,11 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { TOPICS, readTopic } from "./docs.js";
 
 /**
  * Sketchdex over stdio, with the code underneath it replaceable.
@@ -265,12 +268,35 @@ const server = new Server(
   { name: "sketchdex", version },
   // instructions are fixed for the life of the connection (the SDK sends them
   // once, in the initialize result); tools can still be reloaded
-  { capabilities: { tools: { listChanged: true } }, instructions },
+  { capabilities: { tools: { listChanged: true }, resources: {} }, instructions },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   await ready;
   return { tools };
+});
+
+/**
+ * The docs as resources, `sketchdex://docs/<topic>`. Served from here rather
+ * than the worker: the files are static, and the one generated topic (the
+ * tool list) only needs the tool definitions this process already holds.
+ */
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  resources: TOPICS.map((t) => ({
+    uri: `sketchdex://docs/${t.name}`,
+    name: t.name,
+    title: `sketchdex docs: ${t.name}`,
+    description: t.summary,
+    mimeType: "text/markdown",
+  })),
+}));
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  await ready;
+  const uri = request.params.uri;
+  const match = /^sketchdex:\/\/docs\/([a-z]+)$/.exec(uri);
+  if (!match) throw new Error(`unknown resource: ${uri}`);
+  const text = await readTopic(match[1], { tools });
+  return { contents: [{ uri, mimeType: "text/markdown", text }] };
 });
 
 server.setRequestHandler(CallToolRequestSchema, (request) =>
