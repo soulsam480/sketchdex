@@ -56,6 +56,10 @@
   border-top: 1px solid rgb(255 255 255 / 0.08);
 }
 
+@utility hairline-l {
+  border-left: 1px solid rgb(255 255 255 / 0.08);
+}
+
 @utility label-mono {
   font-family: var(--font-mono);
   font-size: 10px;

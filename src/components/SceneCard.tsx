@@ -63,7 +63,7 @@ export default function SceneCard({
   }, [confirming]);
 
   return (
-    <div className="group hairline overflow-hidden rounded-lg bg-ink-900 transition-colors hover:border-white/20">
+    <div className="group hairline relative overflow-hidden rounded-lg bg-ink-900 transition-colors hover:border-white/20">
       <button
         onClick={onOpen}
         className="relative block aspect-[4/3] w-full overflow-hidden bg-ink-850"
@@ -81,22 +81,21 @@ export default function SceneCard({
             blank
           </span>
         )}
-        <span
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleStar();
-          }}
-          role="button"
-          tabIndex={-1}
-          title={meta.starred ? "Unpin" : "Pin"}
-          className={`absolute top-2 right-2 rounded p-1 text-xs leading-none transition-opacity ${
-            meta.starred
-              ? "text-violet opacity-100"
-              : "text-graphite opacity-0 group-hover:opacity-100 hover:text-chalk"
-          }`}
-        >
-          {meta.starred ? "★" : "☆"}
-        </span>
+      </button>
+      {/* a sibling of the open button, laid over its corner: a button inside
+          a button is invalid markup and unreachable from the keyboard */}
+      <button
+        type="button"
+        onClick={onToggleStar}
+        aria-label={meta.starred ? "Unpin" : "Pin"}
+        title={meta.starred ? "Unpin" : "Pin"}
+        className={`absolute top-2 right-2 rounded p-1 text-xs leading-none transition-opacity focus-visible:opacity-100 ${
+          meta.starred
+            ? "text-violet opacity-100"
+            : "text-graphite opacity-0 group-hover:opacity-100 hover:text-chalk"
+        }`}
+      >
+        {meta.starred ? "★" : "☆"}
       </button>
 
       <div className="flex items-center gap-2 px-3 py-2.5">

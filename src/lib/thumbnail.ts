@@ -3,7 +3,8 @@ import type { ScenePayload } from "./types";
 
 /**
  * Renders a scene to an inline SVG string used as the card preview in the
- * library. Fonts are skipped so thumbnails stay small in IndexedDB.
+ * library. Fonts are skipped so the files in the vault's thumbs/ folder stay
+ * small.
  */
 export const renderThumbnail = async (
   payload: ScenePayload,

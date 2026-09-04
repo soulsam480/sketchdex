@@ -6,7 +6,8 @@ type Props = {
   scenes: SceneMeta[];
   activeId: string | null;
   onOpen: (id: string) => void;
-  onNew: () => void;
+  /** Carries the query so "New scene · foo" really does make a scene named foo. */
+  onNew: (name?: string) => void;
   onClose: () => void;
 };
 
@@ -45,7 +46,7 @@ export default function Switcher({
         event.preventDefault();
         const target = results[cursor];
         if (target) onOpen(target.id);
-        else if (query.trim()) onNew();
+        else if (query.trim()) onNew(query.trim());
       }
     };
     window.addEventListener("keydown", onKey, true);
@@ -72,7 +73,7 @@ export default function Switcher({
         <div className="scrollbar-thin max-h-[46vh] overflow-y-auto py-1">
           {results.length === 0 ? (
             <button
-              onClick={onNew}
+              onClick={() => onNew(query.trim() || undefined)}
               className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-graphite hover:bg-ink-800 hover:text-chalk"
             >
               New scene {query.trim() && <span>· “{query.trim()}”</span>}

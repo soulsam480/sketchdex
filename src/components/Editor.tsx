@@ -67,6 +67,16 @@ export default function Editor({
   onOpenSwitcher,
 }: Props) {
   const [initial, setInitial] = useState<ScenePayload | null>(null);
+  /**
+   * "loading" and "failed" are kept apart from "an empty scene": a load that
+   * comes back with nothing must never mount a blank canvas, because the first
+   * save would then write that blank over the real file. "removed" is the
+   * vault telling us the file is gone; saving would only recreate it.
+   */
+  const [loadState, setLoadState] = useState<
+    "loading" | "ready" | "failed" | "removed"
+  >("loading");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [editingName, setEditingName] = useState(false);
   const [api, setApi] = useState<any>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -92,7 +102,9 @@ export default function Editor({
    * so the save indicator is written straight to the DOM instead.
    */
   const statusRef = useRef<HTMLSpanElement>(null);
-  const setStatus = (text: "saving" | "saved" | "retrying" | "preview") => {
+  const setStatus = (
+    text: "saving" | "saved" | "retrying" | "preview" | "not loaded" | "removed",
+  ) => {
     if (statusRef.current) statusRef.current.textContent = text;
   };
 
@@ -101,8 +113,41 @@ export default function Editor({
   const lastVersion = useRef(-1);
   /** Revision of the file this tab last loaded or wrote; saves are conditional on it. */
   const rev = useRef<string | null>(null);
+  /** True once the file has actually been read; nothing is written before that. */
+  const loaded = useRef(false);
+  /** True once the vault reports the file gone; nothing is written after that. */
+  const gone = useRef(false);
+  /** The save currently on the wire, so a second flush joins it instead of racing it. */
+  const inflight = useRef<Promise<void> | null>(null);
   const lastThumbAt = useRef(0);
   const viewDirty = useRef(false);
+
+  // declared ahead of flush so the timer helpers and flush can reach each
+  // other without recursing through a stale closure
+  const flushRef = useRef<(immediate?: boolean, keepalive?: boolean) => Promise<void>>(
+    async () => {},
+  );
+  const mergeFromDiskRef = useRef<() => Promise<void>>(async () => {});
+
+  /**
+   * One pending timer at a time, and `timer.current` is null whenever nothing
+   * is pending. beforeunload relies on that to know whether an edit is still
+   * unsaved.
+   */
+  const cancelPending = useCallback(() => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+  const schedule = useCallback(
+    (delay: number) => {
+      cancelPending();
+      timer.current = window.setTimeout(() => {
+        timer.current = null;
+        flushRef.current();
+      }, delay);
+    },
+    [cancelPending],
+  );
   /**
    * Excalidraw normalises the scene on load and fires onChange for it. Nothing
    * before the first real interaction counts as an edit, so opening a scene
@@ -115,79 +160,109 @@ export default function Editor({
 
   useEffect(() => {
     let alive = true;
+    setLoadState("loading");
     loadScene(meta.id).then((payload) => {
       if (!alive) return;
-      const next = payload ?? { elements: [], appState: {}, files: {} };
-      lastVersion.current = getSceneVersion(next.elements as any);
-      rev.current = next.rev ?? null;
-      setInitial(next);
+      if (!payload) {
+        // no canvas is mounted: mounting an empty one here is exactly how a
+        // blank scene ends up saved over the real file
+        setLoadState("failed");
+        setStatus("not loaded");
+        return;
+      }
+      lastVersion.current = getSceneVersion(payload.elements as any);
+      rev.current = payload.rev ?? null;
+      loaded.current = true;
+      setInitial(payload);
+      setLoadState("ready");
+      setStatus("saved");
     });
     return () => {
       alive = false;
     };
-  }, [meta.id]);
+  }, [meta.id, loadAttempt]);
+
+  const retryLoad = useCallback(() => setLoadAttempt((n) => n + 1), []);
 
   /** `immediate` means "we are leaving now": skip the thumbnail throttle and
-   * refresh the library index. It never forces a write on its own. */
+   * refresh the library index. It never forces a write on its own. `keepalive`
+   * is for the save fired as the page hides or closes (see saveScene). */
   const flush = useCallback(
-    async (immediate = false) => {
-      const payload = latest.current;
-      if (!payload || previewRef.current !== null) return;
-      const version = getSceneVersion(payload.elements as any);
-      const contentChanged = version !== lastVersion.current;
-      if (!contentChanged && !viewDirty.current) {
-        setStatus("saved");
-        return;
+    async (immediate = false, keepalive = false): Promise<void> => {
+      // a second PUT while one is out would carry the same ifRev and be
+      // refused as a conflict against our own write. Wait for the running
+      // one, then look again: edits made meanwhile still need their turn,
+      // and so does the leaving-now work
+      if (inflight.current) {
+        await inflight.current.catch(() => {});
+        return flushRef.current(immediate, keepalive);
       }
-
-      try {
-        const saved = await saveScene(meta.id, payload, {
-          touch: contentChanged,
-          ifRev: rev.current,
-        });
-        rev.current = saved.rev;
-      } catch (err) {
-        if (isConflict(err)) {
-          // the file moved on under this tab (an agent wrote, most likely):
-          // fold what is on disk into what is on the canvas, then save that
-          await mergeFromDiskRef.current();
+      const run = (async () => {
+        // never write a scene that was never read, or one the vault has
+        // reported gone: both would put a canvas on disk that is not the file
+        if (!loaded.current || gone.current) return;
+        const payload = latest.current;
+        if (!payload || previewRef.current !== null) return;
+        const version = getSceneVersion(payload.elements as any);
+        const contentChanged = version !== lastVersion.current;
+        if (!contentChanged && !viewDirty.current) {
+          setStatus("saved");
           return;
         }
-        // the vault is unreachable: keep the change pending and try again,
-        // never advance lastVersion or the edit would be dropped silently
-        setStatus("retrying");
-        if (timer.current) window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => flushRef.current(), RETRY_DELAY);
-        return;
-      }
 
-      lastVersion.current = version;
-      viewDirty.current = false;
-
-      if (
-        contentChanged &&
-        (immediate || Date.now() - lastThumbAt.current > THUMB_INTERVAL)
-      ) {
-        lastThumbAt.current = Date.now();
         try {
-          const svg = await renderThumbnail(payload);
-          await saveThumb(meta.id, svg ?? "");
-        } catch {
-          // a missing preview is cosmetic; the scene itself is already saved
+          const saved = await saveScene(meta.id, payload, {
+            touch: contentChanged,
+            ifRev: rev.current,
+            keepalive,
+          });
+          rev.current = saved.rev;
+        } catch (err) {
+          if (isConflict(err)) {
+            // the file moved on under this tab (an agent wrote, most likely):
+            // fold what is on disk into what is on the canvas, then save that
+            await mergeFromDiskRef.current();
+            return;
+          }
+          // the vault is unreachable: keep the change pending and try again,
+          // never advance lastVersion or the edit would be dropped silently
+          setStatus("retrying");
+          schedule(RETRY_DELAY);
+          return;
         }
+
+        lastVersion.current = version;
+        viewDirty.current = false;
+
+        if (
+          contentChanged &&
+          (immediate || Date.now() - lastThumbAt.current > THUMB_INTERVAL)
+        ) {
+          lastThumbAt.current = Date.now();
+          try {
+            const svg = await renderThumbnail(payload);
+            await saveThumb(meta.id, svg ?? "");
+          } catch {
+            // a missing preview is cosmetic; the scene itself is already saved
+          }
+        }
+        setStatus("saved");
+        if (immediate) await onIndexChange();
+      })();
+      inflight.current = run;
+      try {
+        await run;
+      } finally {
+        inflight.current = null;
       }
-      setStatus("saved");
-      if (immediate) await onIndexChange();
     },
-    [meta.id, onIndexChange],
+    [meta.id, onIndexChange, schedule],
   );
 
   // lets the retry timer inside flush call the latest flush without recursing
-  const flushRef = useRef(flush);
   useEffect(() => {
     flushRef.current = flush;
   }, [flush]);
-  const mergeFromDiskRef = useRef<() => Promise<void>>(async () => {});
 
   const onChange = useCallback(
     (elements: readonly any[], appState: any, files: any) => {
@@ -211,13 +286,9 @@ export default function Editor({
       } else {
         setStatus("saving");
       }
-      if (timer.current) window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(
-        () => flush(),
-        version === lastVersion.current ? VIEW_DEBOUNCE : SAVE_DEBOUNCE,
-      );
+      schedule(version === lastVersion.current ? VIEW_DEBOUNCE : SAVE_DEBOUNCE);
     },
-    [flush],
+    [schedule],
   );
 
   const refreshHistory = useCallback(async () => {
@@ -260,7 +331,7 @@ export default function Editor({
     if (dirty) return mergeFromDiskRef.current();
     const payload = await loadScene(meta.id);
     if (!payload) return;
-    if (timer.current) window.clearTimeout(timer.current);
+    cancelPending();
     lastVersion.current = getSceneVersion(payload.elements as any);
     rev.current = payload.rev ?? null;
     latest.current = payload;
@@ -272,7 +343,7 @@ export default function Editor({
       .then((svg) => saveThumb(meta.id, svg ?? ""))
       .then(() => onIndexChange())
       .catch(() => {});
-  }, [meta.id, paint, onIndexChange]);
+  }, [meta.id, paint, onIndexChange, cancelPending]);
 
   /**
    * A save was refused because the file changed under this tab. Rather than
@@ -284,7 +355,15 @@ export default function Editor({
   const mergeFromDisk = useCallback(async () => {
     const disk = await loadScene(meta.id);
     const local = latest.current;
-    if (!disk || !local || previewRef.current !== null) return;
+    if (!local || previewRef.current !== null) return;
+    if (!disk) {
+      // the vault refused the save a moment ago and now cannot be read either:
+      // the edit stays pending and gets another go, the same as an outage.
+      // Returning here would strand it with nothing scheduled to save it.
+      setStatus("retrying");
+      schedule(RETRY_DELAY);
+      return;
+    }
     const merged = reconcileElements(
       local.elements as any,
       disk.elements as any,
@@ -302,10 +381,9 @@ export default function Editor({
     // from what disk holds, so the next flush writes it (against disk's rev)
     lastVersion.current = getSceneVersion(disk.elements as any);
     paint(payload);
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => flushRef.current(), SAVE_DEBOUNCE);
+    schedule(SAVE_DEBOUNCE);
     setStatus("saving");
-  }, [meta.id, api, paint]);
+  }, [meta.id, api, paint, schedule]);
   useEffect(() => {
     mergeFromDiskRef.current = mergeFromDisk;
   }, [mergeFromDisk]);
@@ -318,11 +396,20 @@ export default function Editor({
           refreshHistory();
           return;
         }
+        if (event.type === "removed") {
+          // the file was deleted or moved out of the vault. Autosave stops
+          // here: a write now would quietly recreate it from memory
+          gone.current = true;
+          cancelPending();
+          setLoadState("removed");
+          setStatus("removed");
+          return;
+        }
         if (event.by === clientId) return; // our own save, echoed back
         adoptFromDisk();
         refreshHistory();
       }),
-    [meta.id, adoptFromDisk, refreshHistory],
+    [meta.id, adoptFromDisk, refreshHistory, cancelPending],
   );
 
   const preview = useCallback(
@@ -339,15 +426,19 @@ export default function Editor({
         }
         return;
       }
+      // strokes from the last debounce window are still only in memory; write
+      // them first, or leaving the preview reloads the file without them
+      cancelPending();
+      await flush();
       // freeze saving before painting, or the swap saves itself over the file
-      if (timer.current) window.clearTimeout(timer.current);
+      cancelPending();
       previewRef.current = snapId;
       setPreviewing(snapId);
       setStatus("preview");
       const snap = await readSnapshot(meta.id, snapId).catch(() => null);
       if (snap) paint({ elements: snap.elements, appState: snap.appState, files: null });
     },
-    [meta.id, paint],
+    [meta.id, paint, flush, cancelPending],
   );
 
   /** The end of a review: this state is the one, and the rest can go. */
@@ -375,21 +466,36 @@ export default function Editor({
   // save on unmount, tab hide, and window close
   useEffect(() => {
     const onHide = () => {
-      if (document.visibilityState === "hidden") flush(true);
+      // keepalive so the request survives the page going away with it
+      if (document.visibilityState === "hidden") flush(true, true);
+    };
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      // only while an edit is actually unsaved: a debounce still waiting or
+      // a PUT on the wire. Fire the pending one now so the hold is short.
+      const pending = timer.current !== null;
+      if (!pending && !inflight.current) return;
+      if (pending) {
+        cancelPending();
+        flush(true, true);
+      }
+      event.preventDefault();
+      event.returnValue = "";
     };
     document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
-      if (timer.current) window.clearTimeout(timer.current);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      cancelPending();
       flush(true);
     };
-  }, [flush]);
+  }, [flush, cancelPending]);
 
   const leave = useCallback(async () => {
-    if (timer.current) window.clearTimeout(timer.current);
+    cancelPending();
     await flush(true);
     onBack();
-  }, [flush, onBack]);
+  }, [flush, onBack, cancelPending]);
 
   // page order, oldest first, so ‹ › reads like leafing through a book and
   // never reshuffles as scenes get edited
@@ -398,7 +504,7 @@ export default function Editor({
   const step = async (delta: number) => {
     const next = ordered[index + delta];
     if (!next) return;
-    if (timer.current) window.clearTimeout(timer.current);
+    cancelPending();
     await flush(true);
     onOpen(next.id);
   };
@@ -520,7 +626,34 @@ export default function Editor({
         onWheelCapture={markInteracted}
         onKeyDownCapture={markInteracted}
       >
-        {initial && (
+        {(loadState === "failed" || loadState === "removed") && (
+          <div className="flex h-full items-center justify-center p-6">
+            <div className="hairline flex flex-col items-center gap-3 rounded-lg bg-ink-900 px-6 py-5 text-center">
+              <span className="label-mono">
+                {loadState === "removed" ? "scene gone" : "not loaded"}
+              </span>
+              <p className="text-sm text-chalk">
+                {loadState === "removed"
+                  ? "This scene was removed."
+                  : "Couldn't load this scene."}
+              </p>
+              <p className="text-xs text-graphite">
+                {loadState === "removed"
+                  ? "The file is no longer in the vault, so nothing more is saved here."
+                  : "Nothing is saved until it loads, so the file is untouched."}
+              </p>
+              {loadState === "failed" && (
+                <button
+                  onClick={retryLoad}
+                  className="hairline rounded-md bg-ink-900 px-2.5 py-1 font-mono text-[11px] text-graphite transition-colors hover:text-chalk"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {loadState === "ready" && initial && (
           <Excalidraw
             theme="dark"
             initialData={{

@@ -24,6 +24,8 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(routeFromLocation);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  /** What the New scene modal opens with; the switcher hands its query over. */
+  const [newName, setNewName] = useState("");
   const [vaultDown, setVaultDown] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -50,7 +52,8 @@ export default function App() {
   useEffect(
     () =>
       onVaultEvent((event) => {
-        if (event.type === "scene") refresh();
+        // a removed file drops its card the same way a new one gains it
+        if (event.type === "scene" || event.type === "removed") refresh();
       }),
     [refresh],
   );
@@ -74,7 +77,19 @@ export default function App() {
 
   const createNamed = useCallback(
     async (name: string) => {
-      const meta = await createScene(name);
+      let meta: SceneMeta;
+      try {
+        meta = await createScene(name);
+      } catch (err) {
+        // rethrown with a reason the modal can show; without this the
+        // failure was an unhandled rejection and a button stuck on Creating
+        const status = (err as { status?: number })?.status;
+        throw new Error(
+          status && status < 500
+            ? `The vault refused to create the scene (${status}).`
+            : "Vault unreachable. Check that the sketchdex server is running.",
+        );
+      }
       await refresh();
       setNewOpen(false);
       open(meta.id);
@@ -82,8 +97,9 @@ export default function App() {
     [open, refresh],
   );
 
-  const promptNewScene = useCallback(() => {
+  const promptNewScene = useCallback((name = "") => {
     setSwitcherOpen(false);
+    setNewName(name);
     setNewOpen(true);
   }, []);
 
@@ -110,6 +126,7 @@ export default function App() {
         newHandledAt.current = Date.now();
         event.preventDefault();
         event.stopPropagation();
+        setNewName("");
         setNewOpen(true);
         return;
       }
@@ -131,6 +148,7 @@ export default function App() {
         if (Date.now() - newHandledAt.current < 2000) return;
         event.preventDefault();
         event.stopPropagation();
+        setNewName("");
         setNewOpen(true);
         return;
       }
@@ -183,7 +201,7 @@ export default function App() {
           scenes={scenes}
           onOpen={open}
           onRefresh={refresh}
-          onNew={promptNewScene}
+          onNew={() => promptNewScene()}
           onOpenSwitcher={() => setSwitcherOpen(true)}
         />
       )}
@@ -199,7 +217,11 @@ export default function App() {
       )}
 
       {newOpen && (
-        <NewScene onClose={() => setNewOpen(false)} onCreate={createNamed} />
+        <NewScene
+          initialName={newName}
+          onClose={() => setNewOpen(false)}
+          onCreate={createNamed}
+        />
       )}
 
       {switcherOpen && (

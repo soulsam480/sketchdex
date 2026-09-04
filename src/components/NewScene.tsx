@@ -5,20 +5,33 @@ import { useEffect, useState } from "react";
  * read as one family: type, press enter, you are in the scene.
  */
 export default function NewScene({
+  initialName = "",
   onClose,
   onCreate,
 }: {
+  /** Prefilled from the switcher query, so the typed name is not typed twice. */
+  initialName?: string;
   onClose: () => void;
   onCreate: (name: string) => Promise<void> | void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const create = async () => {
     if (busy) return;
     setBusy(true);
-    // an empty name is fine, and matches what the New scene button does
-    await onCreate(name.trim() || "Untitled");
+    setError(null);
+    try {
+      // an empty name is fine, and matches what the New scene button does
+      await onCreate(name.trim() || "Untitled");
+    } catch (err) {
+      // the modal stays up with the reason, and the button comes back so the
+      // same name can be tried again once the vault answers
+      setError(err instanceof Error ? err.message : "Couldn't create the scene.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -56,6 +69,10 @@ export default function NewScene({
           spellCheck={false}
           className="hairline-b w-full bg-transparent px-4 py-3.5 text-sm text-chalk outline-none placeholder:text-graphite/70"
         />
+
+        {error && (
+          <p className="hairline-b px-4 py-2 text-xs text-red-300">{error}</p>
+        )}
 
         <div className="hairline-t flex items-center justify-between gap-4 px-4 py-2">
           <div className="flex items-center gap-4">

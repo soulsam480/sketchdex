@@ -31,9 +31,17 @@ export const onStorageStatus = (listener: StatusListener) => {
  */
 export const clientId = Math.random().toString(36).slice(2, 10);
 
+/**
+ * Every non-2xx answer is thrown as one of these. `status` is what callers
+ * branch on: 404 for a scene that is gone, 409 for a conflict, 5xx for a vault
+ * that is actually failing.
+ */
+export type ApiError = Error & { status: number; body: any };
+
 const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  let res: Response;
   try {
-    const res = await fetch(`/api${path}`, {
+    res = await fetch(`/api${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -41,26 +49,35 @@ const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
         ...(init?.headers ?? {}),
       },
     });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      const error = Object.assign(new Error(`${res.status} ${res.statusText}`), {
-        status: res.status,
-        body,
-      });
-      // a conflict is a real answer from a healthy vault, not an outage
-      if (res.status === 409) {
-        setStorageDown(false);
-        throw error;
-      }
-      throw error;
-    }
-    const data = (await res.json()) as T;
-    setStorageDown(false);
-    return data;
   } catch (err) {
-    if ((err as any)?.status !== 409) setStorageDown(true);
+    // fetch only rejects when no answer came back at all: the server is not
+    // running or the network is gone. That is the one case that is an outage.
+    setStorageDown(true);
     throw err;
   }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const error: ApiError = Object.assign(
+      new Error(`${res.status} ${res.statusText}`),
+      { status: res.status, body },
+    );
+    // a 4xx (missing scene, bad request, conflict) is a real answer from a
+    // healthy vault and must not raise the outage banner; 5xx means the vault
+    // itself is broken
+    setStorageDown(res.status >= 500);
+    throw error;
+  }
+  let data: T;
+  try {
+    data = (await res.json()) as T;
+  } catch (err) {
+    // a 2xx that is not JSON means something other than the API answered
+    // (the dev server without its middleware, a proxy page): treat as down
+    setStorageDown(true);
+    throw err;
+  }
+  setStorageDown(false);
+  return data;
 };
 
 /**
@@ -99,9 +116,6 @@ export const slimAppState = (appState: Record<string, any>) => {
   return out;
 };
 
-export const vaultPath = () =>
-  api<{ vault: string }>("/vault").then((r) => r.vault);
-
 export const loadIndex = () => api<SceneMeta[]>("/scenes");
 
 export const createScene = (name = "Untitled") =>
@@ -114,20 +128,37 @@ export const loadScene = (id: string) =>
   api<ScenePayload>(`/scenes/${id}`).catch(() => null);
 
 /**
+ * Browsers let a keepalive request outlive its page, but cap the body at 64 KB
+ * (shared across every keepalive request in flight) and reject bigger ones
+ * outright. Stay a little under it so the save is never refused for size.
+ */
+const KEEPALIVE_LIMIT = 60 * 1024;
+
+/**
  * `ifRev` makes the save conditional on the file still being the revision the
  * tab last saw. If something else (an agent, another tab) wrote in between the
  * server answers 409 instead of letting this write land on top; the error
  * carries `status: 409` and `body.rev`. Omit it for an unconditional write.
+ *
+ * `keepalive` is for the save fired as the tab hides or closes: the request
+ * keeps going after the page is gone, as long as the body is small enough.
+ * A scene over the limit goes the normal way and takes its chances.
  */
 export const saveScene = (
   id: string,
   payload: ScenePayload,
-  { touch = true, ifRev }: { touch?: boolean; ifRev?: string | null } = {},
+  {
+    touch = true,
+    ifRev,
+    keepalive = false,
+  }: { touch?: boolean; ifRev?: string | null; keepalive?: boolean } = {},
 ) => {
   const { rev: _rev, ...body } = payload;
+  const json = JSON.stringify({ payload: body, touch, ifRev: ifRev ?? undefined });
   return api<{ scenes: SceneMeta[]; rev: string | null }>(`/scenes/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ payload: body, touch, ifRev: ifRev ?? undefined }),
+    body: json,
+    keepalive: keepalive && new Blob([json]).size < KEEPALIVE_LIMIT,
   });
 };
 
@@ -212,7 +243,9 @@ export const clearHistory = (sceneId: string) =>
 
 export type VaultEvent =
   | { type: "scene"; id: string; by: string; at: number }
-  | { type: "history"; id: string };
+  | { type: "history"; id: string }
+  /** The scene file is gone from the vault (deleted or moved away). */
+  | { type: "removed"; id: string; at: number };
 
 /**
  * Changes made outside this tab. An agent writing to the vault does not go
