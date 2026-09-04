@@ -8,6 +8,10 @@ const DEFAULT_VAULT = path.join(os.homedir(), "Documents", "sketchdex");
 
 const EMPTY_PAYLOAD = { elements: [], appState: {}, files: {} };
 
+// names Windows reserves for devices; a scene file called CON.excalidraw
+// cannot be created there, so such an id is refused everywhere
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+
 export function createStore(vaultPath = process.env.SKETCHDEX_VAULT) {
   const vault = vaultPath ? path.resolve(vaultPath) : DEFAULT_VAULT;
   const scenesDir = path.join(vault, "scenes");
@@ -24,14 +28,34 @@ export function createStore(vaultPath = process.env.SKETCHDEX_VAULT) {
     }
   })();
 
+  /**
+   * Every mutation runs through one queue. Two writers in the same process
+   * (the editor's autosave and an agent op on the same scene, or several
+   * thumbnail stamps on library load) would otherwise read the index or a
+   * scene at the same moment and the second write would drop the first. A
+   * vault has one owner and writes are milliseconds, so a queue costs nothing
+   * and makes check-then-write (the `ifRev` test and the write it guards)
+   * atomic within the process.
+   */
+  let chain = Promise.resolve();
+  const serial = (fn) => {
+    const run = chain.then(fn, fn);
+    chain = run.catch(() => {});
+    return run;
+  };
+
   /** Write via temp file + rename so a crash can never leave a half file. */
+  let tmpCounter = 0;
   const writeAtomic = async (file, contents) => {
-    const tmp = `${file}.${process.pid}.tmp`;
+    tmpCounter += 1;
+    const tmp = `${file}.${process.pid}.${tmpCounter}.tmp`;
     await fs.writeFile(tmp, contents, "utf8");
     await fs.rename(tmp, file);
   };
 
-  const isSafeId = (id) => /^[A-Za-z0-9_-]{1,64}$/.test(id ?? "");
+  const isSafeId = (id) => /^[A-Za-z0-9_-]{1,64}$/.test(id ?? "") && !RESERVED.test(id);
+
+  const badId = () => Object.assign(new Error("bad id"), { status: 400 });
 
   /**
    * A revision token for a scene: the file's mtime and size. Cheap, needs no
@@ -56,6 +80,9 @@ export function createStore(vaultPath = process.env.SKETCHDEX_VAULT) {
     for (const name of names) {
       if (!name.endsWith(".excalidraw")) continue;
       const id = name.slice(0, -".excalidraw".length);
+      // a file dropped in by hand with a name the routes would refuse would
+      // become a card that cannot be opened; leave it for the user to rename
+      if (!isSafeId(id)) continue;
       const file = path.join(scenesDir, name);
       const [stat, payload] = await Promise.all([
         fs.stat(file).catch(() => null),
@@ -143,17 +170,8 @@ export function createStore(vaultPath = process.env.SKETCHDEX_VAULT) {
   const liveCount = (payload) =>
     (payload.elements ?? []).filter((el) => !el.isDeleted).length;
 
-  return {
-    vault,
-
-    /** Exposed so an agent can operate on the file with its own tools. */
-    scenePath: (id) => (isSafeId(id) ? sceneFile(id) : null),
-
-    async list() {
-      return readIndex();
-    },
-
-    async create({ name = "Untitled", id, createdAt, updatedAt } = {}) {
+  const create = ({ name = "Untitled", id, createdAt, updatedAt } = {}) =>
+    serial(async () => {
       await ready;
       const now = Date.now();
       const meta = {
@@ -169,10 +187,35 @@ export function createStore(vaultPath = process.env.SKETCHDEX_VAULT) {
       // written a line ago, so this entry can already be in the list
       await writeIndex([meta, ...(await readIndex())]);
       return meta;
+    });
+
+  const writeThumb = (id, svg) =>
+    serial(async () => {
+      await ready;
+      if (!svg) {
+        await fs.rm(thumbFile(id), { force: true }).catch(() => {});
+        return;
+      }
+      await writeAtomic(thumbFile(id), svg);
+      // stamped so the library can tell a preview is older than the scene it
+      // previews, which is how an agent's edit gets a fresh card
+      await patchIndex(id, (meta) => ({ ...meta, thumbAt: Date.now() }));
+    });
+
+  return {
+    vault,
+
+    /** Exposed so an agent can operate on the file with its own tools. */
+    scenePath: (id) => (isSafeId(id) ? sceneFile(id) : null),
+
+    async list() {
+      return readIndex();
     },
 
+    create,
+
     async read(id) {
-      if (!isSafeId(id)) throw new Error("bad id");
+      if (!isSafeId(id)) throw badId();
       const { elements, appState, files } = await readScene(id);
       return { elements, appState, files, rev: await revOf(id) };
     },
@@ -186,114 +229,121 @@ export function createStore(vaultPath = process.env.SKETCHDEX_VAULT) {
      * current rev) is thrown, so the caller can pick up what changed instead
      * of writing over it. Without `ifRev` the write is unconditional.
      */
-    async save(id, payload, { touch = true, ifRev } = {}) {
-      if (!isSafeId(id)) throw new Error("bad id");
-      if (ifRev !== undefined && ifRev !== null) {
-        const current = await revOf(id);
-        if (current && current !== ifRev) {
-          throw Object.assign(new Error("scene changed on disk since it was loaded"), {
-            status: 409,
-            code: "conflict",
-            rev: current,
-          });
+    save(id, payload, { touch = true, ifRev } = {}) {
+      if (!isSafeId(id)) return Promise.reject(badId());
+      return serial(async () => {
+        if (ifRev !== undefined && ifRev !== null) {
+          const current = await revOf(id);
+          if (current && current !== ifRev) {
+            throw Object.assign(new Error("scene changed on disk since it was loaded"), {
+              status: 409,
+              code: "conflict",
+              rev: current,
+            });
+          }
         }
-      }
-      const list = await readIndex();
-      const meta = list.find((m) => m.id === id);
-      await writeScene(id, payload, meta?.name);
-      if (!touch) return list;
-      return patchIndex(id, (m) => ({
-        ...m,
-        updatedAt: Date.now(),
-        elementCount: liveCount(payload),
-      }));
+        const list = await readIndex();
+        const meta = list.find((m) => m.id === id);
+        await writeScene(id, payload, meta?.name);
+        if (!touch) return list;
+        return patchIndex(id, (m) => ({
+          ...m,
+          updatedAt: Date.now(),
+          elementCount: liveCount(payload),
+        }));
+      });
     },
 
-    async patch(id, { name, starred }) {
-      if (!isSafeId(id)) throw new Error("bad id");
-      const list = await patchIndex(id, (meta) => ({
-        ...meta,
-        ...(name !== undefined ? { name: name.trim() || "Untitled" } : {}),
-        ...(starred !== undefined ? { starred } : {}),
-      }));
-      if (name !== undefined) {
-        // keep the name inside the file too, so a rebuild recovers it
-        const payload = await readScene(id).catch(() => EMPTY_PAYLOAD);
-        await writeScene(id, payload, name.trim() || "Untitled");
-      }
-      return list;
+    patch(id, { name, starred }) {
+      if (!isSafeId(id)) return Promise.reject(badId());
+      return serial(async () => {
+        // the name lives inside the file too, so a rebuild recovers it. Read
+        // before touching anything: a file that cannot be read right now (mid
+        // sync, held by another program, hand-edited into invalid JSON) must
+        // not be replaced with an empty scene just because it was renamed
+        const payload = name !== undefined ? await readScene(id) : null;
+        const list = await patchIndex(id, (meta) => ({
+          ...meta,
+          ...(name !== undefined ? { name: name.trim() || "Untitled" } : {}),
+          ...(starred !== undefined ? { starred } : {}),
+        }));
+        if (payload) await writeScene(id, payload, name.trim() || "Untitled");
+        return list;
+      });
     },
 
     /** Deletes are recoverable: the file moves to trash/ rather than dying. */
-    async remove(id) {
-      if (!isSafeId(id)) throw new Error("bad id");
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      await fs
-        .rename(sceneFile(id), path.join(trashDir, `${stamp}-${id}.excalidraw`))
-        .catch(() => {});
-      await fs.rm(thumbFile(id), { force: true }).catch(() => {});
-      const list = await readIndex();
-      return writeIndex(list.filter((meta) => meta.id !== id));
+    remove(id) {
+      if (!isSafeId(id)) return Promise.reject(badId());
+      return serial(async () => {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        try {
+          await fs.rename(sceneFile(id), path.join(trashDir, `${stamp}-${id}.excalidraw`));
+        } catch (err) {
+          // already gone is fine; anything else means the file is still in
+          // scenes/ and must stay listed rather than become invisible
+          if (err?.code !== "ENOENT") throw err;
+        }
+        await fs.rm(thumbFile(id), { force: true }).catch(() => {});
+        const list = await readIndex();
+        return writeIndex(list.filter((meta) => meta.id !== id));
+      });
     },
 
-    async duplicate(id) {
-      if (!isSafeId(id)) throw new Error("bad id");
-      const list = await readIndex();
-      const source = list.find((meta) => meta.id === id);
-      if (!source) return null;
-      const payload = await readScene(id).catch(() => EMPTY_PAYLOAD);
-      const now = Date.now();
-      const copy = {
-        ...source,
-        id: crypto.randomUUID(),
-        name: `${source.name} copy`,
-        createdAt: now,
-        updatedAt: now,
-        starred: false,
-      };
-      await writeScene(copy.id, payload, copy.name);
-      await fs.copyFile(thumbFile(id), thumbFile(copy.id)).catch(() => {});
-      const at = list.findIndex((meta) => meta.id === id);
-      const next = [...list];
-      next.splice(at + 1, 0, copy);
-      await writeIndex(next);
-      return copy;
+    duplicate(id) {
+      if (!isSafeId(id)) return Promise.reject(badId());
+      return serial(async () => {
+        const list = await readIndex();
+        const source = list.find((meta) => meta.id === id);
+        if (!source) return null;
+        const payload = await readScene(id);
+        const now = Date.now();
+        const copy = {
+          ...source,
+          id: crypto.randomUUID(),
+          name: `${source.name} copy`,
+          createdAt: now,
+          updatedAt: now,
+          starred: false,
+        };
+        await writeScene(copy.id, payload, copy.name);
+        await fs.copyFile(thumbFile(id), thumbFile(copy.id)).catch(() => {});
+        const at = list.findIndex((meta) => meta.id === id);
+        const next = [...list];
+        next.splice(at + 1, 0, copy);
+        await writeIndex(next);
+        return copy;
+      });
     },
 
     async readThumb(id) {
-      if (!isSafeId(id)) throw new Error("bad id");
+      if (!isSafeId(id)) throw badId();
       return fs.readFile(thumbFile(id), "utf8").catch(() => "");
     },
 
-    async writeThumb(id, svg) {
-      if (!isSafeId(id)) throw new Error("bad id");
-      await ready;
-      if (!svg) {
-        await fs.rm(thumbFile(id), { force: true }).catch(() => {});
-        return;
-      }
-      await writeAtomic(thumbFile(id), svg);
-      // stamped so the library can tell a preview is older than the scene it
-      // previews, which is how an agent's edit gets a fresh card
-      await patchIndex(id, (meta) => ({ ...meta, thumbAt: Date.now() }));
+    writeThumb(id, svg) {
+      if (!isSafeId(id)) return Promise.reject(badId());
+      return writeThumb(id, svg);
     },
 
     /** One-time import of scenes that were living in IndexedDB. */
     async importScene({ meta, payload, thumb }) {
-      const created = await this.create({
+      const created = await create({
         name: meta?.name ?? "Untitled",
         id: meta?.id,
         createdAt: meta?.createdAt,
         updatedAt: meta?.updatedAt,
       });
-      await writeScene(created.id, payload ?? EMPTY_PAYLOAD, created.name);
-      if (thumb) await this.writeThumb(created.id, thumb);
-      await patchIndex(created.id, (m) => ({
-        ...m,
-        starred: meta?.starred ?? false,
-        elementCount: liveCount(payload ?? EMPTY_PAYLOAD),
-        updatedAt: meta?.updatedAt ?? m.updatedAt,
-      }));
+      await serial(async () => {
+        await writeScene(created.id, payload ?? EMPTY_PAYLOAD, created.name);
+        await patchIndex(created.id, (m) => ({
+          ...m,
+          starred: meta?.starred ?? false,
+          elementCount: liveCount(payload ?? EMPTY_PAYLOAD),
+          updatedAt: meta?.updatedAt ?? m.updatedAt,
+        }));
+      });
+      if (thumb) await writeThumb(created.id, thumb);
       return created;
     },
   };

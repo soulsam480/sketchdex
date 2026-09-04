@@ -27,7 +27,8 @@ const ECHO_WINDOW = 2500;
 export function createWatcher(vault, { onExternal, revOf } = {}) {
   const scenesDir = path.join(vault, "scenes");
   const clients = new Set();
-  const recent = new Map(); // sceneId -> { by, at }
+  const beats = new Map(); // res -> heartbeat interval
+  const recent = new Map(); // sceneId -> { by, at, rev }
   const pending = new Map(); // sceneId -> timer
 
   const send = (event) => {
@@ -36,12 +37,25 @@ export function createWatcher(vault, { onExternal, revOf } = {}) {
       try {
         res.write(frame);
       } catch {
-        clients.delete(res);
+        drop(res);
       }
     }
   };
 
+  const drop = (res) => {
+    clients.delete(res);
+    clearInterval(beats.get(res));
+    beats.delete(res);
+  };
+
   const announce = async (sceneId) => {
+    // the file is gone: a delete (moved to trash) or a rename by hand. There
+    // is nothing to reload and nothing to snapshot; tell tabs to let go of it
+    if (revOf && (await revOf(sceneId).catch(() => null)) === null) {
+      recent.delete(sceneId);
+      send({ type: "removed", id: sceneId, at: Date.now() });
+      return;
+    }
     const note = recent.get(sceneId);
     let by = "external";
     if (note) {
@@ -70,7 +84,7 @@ export function createWatcher(vault, { onExternal, revOf } = {}) {
       sceneId,
       setTimeout(() => {
         pending.delete(sceneId);
-        announce(sceneId);
+        announce(sceneId).catch(() => {});
       }, 120),
     );
   };
@@ -84,6 +98,7 @@ export function createWatcher(vault, { onExternal, revOf } = {}) {
         nudge(filename.slice(0, -".excalidraw".length));
       });
       watcher.on("error", () => {
+        watcher?.close();
         watcher = null;
       });
     } catch {
@@ -121,14 +136,32 @@ export function createWatcher(vault, { onExternal, revOf } = {}) {
         try {
           res.write(": beat\n\n");
         } catch {
-          clearInterval(beat);
+          drop(res);
         }
       }, 25000);
+      beats.set(res, beat);
 
-      req.on("close", () => {
-        clearInterval(beat);
-        clients.delete(res);
-      });
+      req.on("close", () => drop(res));
+    },
+
+    /**
+     * Let the process end: close the folder watch, stop every heartbeat, end
+     * every stream. Without this, anything that embeds the server has to
+     * process.exit to get out.
+     */
+    close() {
+      watcher?.close();
+      watcher = null;
+      for (const timer of pending.values()) clearTimeout(timer);
+      pending.clear();
+      for (const res of [...clients]) {
+        drop(res);
+        try {
+          res.end();
+        } catch {
+          // already gone
+        }
+      }
     },
   };
 }

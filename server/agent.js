@@ -1,6 +1,6 @@
 import { createStore } from "./store.js";
 import { createHistory } from "./history.js";
-import { buildElements, patchElement } from "./elements.js";
+import { buildElements, growContainerFor, patchElement } from "./elements.js";
 import { inspectScene } from "./inspect.js";
 import { svgToSpecs } from "./svg.js";
 import { freshAppState, inkFor, paperOf } from "./paper.js";
@@ -24,6 +24,18 @@ export function createAgentApi(vaultPath) {
   const history = createHistory(store.vault);
 
   const live = (elements) => (elements ?? []).filter((el) => !el.isDeleted);
+
+  /**
+   * An arrow bound to an element that was already on the canvas needs that
+   * element to list the arrow in its `boundElements`, or the app will not
+   * move the arrow with it. buildElements hands those back as copies; this
+   * puts them in place of the originals.
+   */
+  const withUpdated = (elements, updated = []) => {
+    if (!updated.length) return elements;
+    const byId = new Map(updated.map((el) => [el.id, el]));
+    return elements.map((el) => byId.get(el.id) ?? el);
+  };
 
   /**
    * Imported artwork arrives as many elements that are one drawing, so they get
@@ -153,9 +165,20 @@ export function createAgentApi(vaultPath) {
    * agent's own description of what it was about to do.
    */
   const mutate = async (idOrName, label, apply, attempt = 0) => {
+    // enforced here, not only in the tool schema, so REST and Node callers
+    // are held to the same contract: an unlabelled snapshot is one the user
+    // cannot judge in the history sidebar
+    if (!label || !String(label).trim()) {
+      throw Object.assign(
+        new Error("label is required: a short description of this change, e.g. 'add the dog illustration'"),
+        { status: 400 },
+      );
+    }
     const meta = await resolve(idOrName);
     const payload = await store.read(meta.id);
-    await history.take(meta.id, payload, { label: label || "agent edit" });
+    // one snapshot per edit, not one per attempt: a conflicting save retries
+    // on top of the newer file, and the state worth keeping is the first one
+    if (attempt === 0) await history.take(meta.id, payload, { label });
 
     const next = await apply(payload, meta);
     const saved = {
@@ -264,7 +287,7 @@ export function createAgentApi(vaultPath) {
      * narrower helpers from being a ceiling.
      */
     async writeScene(idOrName, { elements, appState, label } = {}) {
-      return mutate(idOrName, label ?? "write scene", (payload) => {
+      return mutate(idOrName, label, (payload) => {
         const { elements: built, warnings } = buildElements(elements, {
           existing: [],
         });
@@ -284,9 +307,10 @@ export function createAgentApi(vaultPath) {
     async snapshot(idOrName, label) {
       const meta = await resolve(idOrName);
       const payload = await store.read(meta.id);
-      const entry = await history.take(meta.id, payload, {
-        label: label || "manual snapshot",
-      });
+      if (!label || !String(label).trim()) {
+        throw Object.assign(new Error("label is required: say why this snapshot is being taken"), { status: 400 });
+      }
+      const entry = await history.take(meta.id, payload, { label });
       return { sceneId: meta.id, name: meta.name, snapshot: entry };
     },
 
@@ -325,13 +349,13 @@ export function createAgentApi(vaultPath) {
     },
 
     async addElements(idOrName, elements, { label } = {}) {
-      return mutate(idOrName, label ?? "add elements", (payload) => {
-        const { elements: built, warnings } = buildElements(elements, {
+      return mutate(idOrName, label, (payload) => {
+        const { elements: built, warnings, updated } = buildElements(elements, {
           existing: payload.elements,
           ink: inkFor(paperOf(payload)),
         });
         return {
-          elements: [...payload.elements, ...built],
+          elements: [...withUpdated(payload.elements, updated), ...built],
           result: {
             added: built.length,
             elements: built.map(brief),
@@ -399,15 +423,26 @@ export function createAgentApi(vaultPath) {
           ? patches
           : (ids ?? []).map((id) => ({ id, ...(patch ?? {}) }));
 
-      return mutate(idOrName, label ?? "update elements", (payload) => {
+      return mutate(idOrName, label, (payload) => {
         const wanted = new Map(list.filter((p) => p?.id).map((p) => [p.id, p]));
         const touched = new Set();
-        const elements = payload.elements.map((el) => {
+        let elements = payload.elements.map((el) => {
           const next = wanted.get(el.id);
           if (!next) return el;
           touched.add(el.id);
           return patchElement(el, next);
         });
+        // a label that re-wrapped taller needs its container to grow with it,
+        // as it does when the text is edited in the app
+        const grown = new Map();
+        for (const el of elements) {
+          if (!touched.has(el.id) || !el.containerId) continue;
+          const container = elements.find((c) => c.id === el.containerId);
+          if (!container) continue;
+          const bigger = growContainerFor(el, container);
+          if (bigger !== container) grown.set(container.id, bigger);
+        }
+        if (grown.size) elements = elements.map((el) => grown.get(el.id) ?? el);
         return {
           elements,
           result: {
@@ -419,15 +454,33 @@ export function createAgentApi(vaultPath) {
     },
 
     async deleteElements(idOrName, ids, { label } = {}) {
-      return mutate(idOrName, label ?? "delete elements", (payload) => {
+      return mutate(idOrName, label, (payload) => {
         const doomed = new Set(ids ?? []);
+        // a label dies with its container, as it does when deleted in the app
+        for (const el of payload.elements) {
+          if (el.containerId && doomed.has(el.containerId)) doomed.add(el.id);
+        }
         let removed = 0;
         // soft delete, which is what Excalidraw itself does, so the change
         // still syncs cleanly to an open editor
         const elements = payload.elements.map((el) => {
-          if (!doomed.has(el.id) || el.isDeleted) return el;
-          removed += 1;
-          return { ...el, isDeleted: true, version: (el.version ?? 1) + 1 };
+          if (el.isDeleted) return el;
+          if (doomed.has(el.id)) {
+            removed += 1;
+            return { ...el, isDeleted: true, version: (el.version ?? 1) + 1 };
+          }
+          // an arrow bound to something that is gone would point at nothing
+          const start = el.startBinding && doomed.has(el.startBinding.elementId);
+          const end = el.endBinding && doomed.has(el.endBinding.elementId);
+          const bound = (el.boundElements ?? []).some((b) => doomed.has(b.id));
+          if (!start && !end && !bound) return el;
+          return {
+            ...el,
+            ...(start ? { startBinding: null } : {}),
+            ...(end ? { endBinding: null } : {}),
+            ...(bound ? { boundElements: el.boundElements.filter((b) => !doomed.has(b.id)) } : {}),
+            version: (el.version ?? 1) + 1,
+          };
         });
         return { elements, result: { deleted: removed } };
       });
@@ -444,7 +497,7 @@ export function createAgentApi(vaultPath) {
      * tears a panel apart.
      */
     async moveElements(idOrName, { ids, groupIds, region, dx = 0, dy = 0, label } = {}) {
-      return mutate(idOrName, label ?? "move elements", (payload) => {
+      return mutate(idOrName, label, (payload) => {
         const wantedIds = new Set(ids ?? []);
         const wantedGroups = new Set(groupIds ?? []);
         const box = region
@@ -493,7 +546,7 @@ export function createAgentApi(vaultPath) {
     },
 
     async replaceElements(idOrName, elements, { label } = {}) {
-      return mutate(idOrName, label ?? "replace scene contents", (payload) => {
+      return mutate(idOrName, label, (payload) => {
         const { elements: built, warnings } = buildElements(elements, {
           ink: inkFor(paperOf(payload)),
         });
@@ -524,16 +577,16 @@ export function createAgentApi(vaultPath) {
       const converted = svgToSpecs(svg, { currentColor: ink, ...options });
       const result = await mutate(
         meta.id,
-        options.label ?? "import SVG artwork",
+        options.label,
         (payload) => {
-          const { elements: built, warnings } = buildElements(converted.specs, {
+          const { elements: built, warnings, updated } = buildElements(converted.specs, {
             existing: payload.elements,
             ink,
           });
           const group = options.group === false ? null : `svg-${Math.random().toString(36).slice(2, 10)}`;
           const grouped = group ? withGroup(built, group) : built;
           return {
-            elements: [...payload.elements, ...grouped],
+            elements: [...withUpdated(payload.elements, updated), ...grouped],
             result: {
               added: grouped.length,
               // the handle for moving or deleting the piece as one thing
@@ -550,7 +603,7 @@ export function createAgentApi(vaultPath) {
     async setBackground(idOrName, color, { label } = {}) {
       // the pen for hand drawing follows the paper, so the next stroke drawn in
       // the app is visible; existing elements are left exactly as they are
-      return mutate(idOrName, label ?? "set background", (payload) => ({
+      return mutate(idOrName, label, (payload) => ({
         elements: payload.elements,
         appState: {
           ...payload.appState,
@@ -586,6 +639,12 @@ export function createAgentApi(vaultPath) {
      * server that has not read this scene yet).
      */
     async noteExternalChange(sceneId) {
+      // the file is gone (deleted, or moved by hand): nothing to snapshot,
+      // and taking one would recreate the history folder for a dead scene
+      if ((await store.rev(sceneId)) === null) {
+        lastKnown.delete(sceneId);
+        return null;
+      }
       // our own write, made from another process: already snapshotted
       if (await history.isClaimed(sceneId, store.scenePath(sceneId))) return null;
       const previous = lastKnown.get(sceneId);
