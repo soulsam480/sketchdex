@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { readFileSync } from "node:fs";
-import { expandSpecs } from "./geometry.js";
+import { expandSpecs, pointBounds } from "./geometry.js";
 
 /**
  * Turns short, hand-writable specs into real Excalidraw elements.
@@ -41,15 +41,35 @@ const nonce = () => Math.floor(Math.random() * 2 ** 31);
 const DIGITS =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+/**
+ * The integer arithmetic below is lifted from the `fractional-indexing`
+ * package (David Greenspan, CC0), which is what Excalidraw validates keys
+ * against. A key is a head letter plus a fixed number of integer digits (the
+ * head says how many: a..z is 2..27, Z..A is 2..27 the other way) and then an
+ * optional fractional tail that the app writes when it inserts between two
+ * keys. Stepping past a key means stepping its *integer part*; the tail is
+ * dropped, which is why "a0z" is followed by "a1" and not "a10".
+ */
+const integerLength = (head) => {
+  if (head >= "a" && head <= "z") return head.charCodeAt(0) - "a".charCodeAt(0) + 2;
+  if (head >= "A" && head <= "Z") return "Z".charCodeAt(0) - head.charCodeAt(0) + 2;
+  return null;
+};
+
+const integerPart = (key) => {
+  const length = integerLength(key[0]);
+  if (length === null || length > key.length) return null;
+  return key.slice(0, length);
+};
+
 /** One step up the integer ladder, carrying into a wider head when it fills. */
-const incrementInteger = (key) => {
-  const head = key[0];
-  let digits = key.slice(1).split("");
+const incrementInteger = (integer) => {
+  const [head, ...digits] = integer.split("");
   let carry = true;
   for (let i = digits.length - 1; i >= 0 && carry; i--) {
     const next = DIGITS.indexOf(digits[i]) + 1;
     if (next === DIGITS.length) {
-      digits[i] = "0";
+      digits[i] = DIGITS[0];
     } else {
       digits[i] = DIGITS[next];
       carry = false;
@@ -58,14 +78,18 @@ const incrementInteger = (key) => {
   if (!carry) return head + digits.join("");
 
   // the digit block is exhausted: move to the next head, which is one digit
-  // wider on the positive side and one narrower on the negative side
+  // wider on the positive side and one narrower on the negative side. The
+  // negative side ends at Z and the positive side starts over at a0.
+  if (head === "Z") return "a" + DIGITS[0];
   if (head === "z") return null;
-  const nextHead = DIGITS[DIGITS.indexOf(head) + 1];
-  if (nextHead > "a") return nextHead + digits.join("") + "0";
-  return nextHead + digits.slice(1).join("");
+  const nextHead = String.fromCharCode(head.charCodeAt(0) + 1);
+  if (nextHead > "a") digits.push(DIGITS[0]);
+  else digits.pop();
+  return nextHead + digits.join("");
 };
 
-const isIndex = (value) => typeof value === "string" && /^[A-Za-z][0-9A-Za-z]*$/.test(value);
+const isIndex = (value) =>
+  typeof value === "string" && /^[A-Za-z][0-9A-Za-z]*$/.test(value) && integerPart(value) !== null;
 
 /**
  * A generator that hands out ascending indices after everything in `existing`.
@@ -75,7 +99,7 @@ export const indexFactory = (existing = []) => {
   const taken = existing.map((el) => el?.index).filter(isIndex).sort();
   let current = taken.length ? taken[taken.length - 1] : null;
   return () => {
-    current = current ? incrementInteger(current) : "a0";
+    current = current ? incrementInteger(integerPart(current)) : "a0";
     // z overflow is unreachable in practice; fall back rather than emit null
     if (!current) current = "a0";
     return current;
@@ -147,20 +171,21 @@ const METRICS = (() => {
   }
 })();
 
-const lineWidth = (line, fontSize, fontFamily) => {
+/** Advance of one glyph, per px of font size. */
+const glyphAdvance = (ch, fontFamily) => {
   const table = METRICS[fontFamily];
   if (table) {
-    let run = 0;
-    for (const ch of line) {
-      const advance = table.advance[ch];
-      // an unmeasured glyph (CJK, emoji) is roughly square in every font here
-      run += advance !== undefined ? advance : ch.codePointAt(0) > 0x2e80 ? 1 : table.mean;
-    }
-    return run * fontSize;
+    const advance = table.advance[ch];
+    // an unmeasured glyph (CJK, emoji) is roughly square in every font here
+    return advance !== undefined ? advance : ch.codePointAt(0) > 0x2e80 ? 1 : table.mean;
   }
+  return charWeight(ch) * widthScale(fontFamily);
+};
+
+const lineWidth = (line, fontSize, fontFamily) => {
   let run = 0;
-  for (const ch of line) run += charWeight(ch);
-  return run * widthScale(fontFamily) * fontSize;
+  for (const ch of line) run += glyphAdvance(ch, fontFamily);
+  return run * fontSize;
 };
 
 export const measureText = (text, fontSize, fontFamily = 5) => {
@@ -177,6 +202,27 @@ export const measureText = (text, fontSize, fontFamily = 5) => {
 
 /** Excalidraw's own inset between a container's edge and its label. */
 export const BOUND_TEXT_PADDING = 5;
+
+/**
+ * How wide a label may be inside a container, per Excalidraw's own rules: a
+ * rectangle offers its full width less the padding, while a diamond and an
+ * ellipse only offer the largest box that fits inside them (half the width,
+ * and width over root two). Same rule for heights.
+ */
+export const labelMaxWidth = (type, width) => {
+  if (type === "diamond") return Math.round(width / 2) - BOUND_TEXT_PADDING * 2;
+  if (type === "ellipse") return Math.round((width / 2) * Math.SQRT2) - BOUND_TEXT_PADDING * 2;
+  return width - BOUND_TEXT_PADDING * 2;
+};
+
+/** The inverse: how tall a container must be to hold a label of this height. */
+export const containerHeightFor = (type, textHeight) => {
+  const padding = BOUND_TEXT_PADDING * 2;
+  const h = Math.ceil(textHeight);
+  if (type === "diamond") return 2 * (h + padding);
+  if (type === "ellipse") return Math.round(((h + padding) / Math.SQRT2) * 2);
+  return h + padding;
+};
 
 /**
  * Break text to fit a width, the way Excalidraw does when you resize a text
@@ -207,17 +253,24 @@ export const wrapText = (text, maxWidth, fontSize, fontFamily = 5) => {
       }
       if (line) push();
 
-      // a single word wider than the line: cut it at the last character that fits
-      let rest = word;
-      while (lineWidth(rest, fontSize, fontFamily) > maxWidth && rest.length > 1) {
-        let cut = rest.length;
-        while (cut > 1 && lineWidth(rest.slice(0, cut), fontSize, fontFamily) > maxWidth) {
-          cut -= 1;
+      // a single word wider than the line: walk it once, glyph by glyph, and
+      // cut wherever the next glyph would cross the width. Measuring every
+      // candidate cut instead is quadratic, and a pasted URL or a long CJK run
+      // made that take seconds. Iterating code points keeps surrogate pairs
+      // whole.
+      let piece = "";
+      let run = 0;
+      for (const ch of word) {
+        const advance = glyphAdvance(ch, fontFamily);
+        if (piece && (run + advance) * fontSize > maxWidth) {
+          out.push(piece);
+          piece = "";
+          run = 0;
         }
-        out.push(rest.slice(0, cut));
-        rest = rest.slice(cut);
+        piece += ch;
+        run += advance;
       }
-      line = rest;
+      line = piece;
     }
     push();
   }
@@ -258,7 +311,7 @@ export const SUGARED_TYPES = new Set([
 const base = (spec, index, ink = "#1e1e1e") => {
   // the sugar fields are consumed by buildElements and must not reach the
   // element itself, so they are peeled off here rather than deleted later
-  const { ref: _ref, label: _label, start: _start, end: _end, ...rest } = spec;
+  const { ref: _ref, label: _label, start: _start, end: _end, wrap: _wrap, ...rest } = spec;
   const withDefault = (key, value) => {
     if (rest[key] === undefined) rest[key] = value;
   };
@@ -308,14 +361,19 @@ const defaultRoundness = (type) => {
  * element. Without one it stays on a single line, which is what Excalidraw does
  * for freely-typed text.
  */
-const textFields = (spec, containerId = null, containerWidth = null) => {
+const textFields = (spec, container = null) => {
   const fontSize = num(spec.fontSize, 20);
   const fontFamily = num(spec.fontFamily, 5);
   const original = String(spec.text ?? "");
+  const containerId = container?.id ?? null;
 
   let wrapWidth = null;
-  if (containerId && containerWidth) {
-    wrapWidth = containerWidth - BOUND_TEXT_PADDING * 2;
+  if (container) {
+    // never narrower than a glyph (one em covers the widest): a tiny
+    // container would otherwise hand wrapText a negative width, which it
+    // reads as "do not wrap", and the label would be stored with a negative
+    // width of its own
+    wrapWidth = Math.max(labelMaxWidth(container.type, num(container.width, 0)), fontSize);
   } else if (typeof spec.wrap === "number") {
     wrapWidth = spec.wrap;
   } else if (spec.wrap !== false && typeof spec.width === "number") {
@@ -336,7 +394,9 @@ const textFields = (spec, containerId = null, containerWidth = null) => {
     // a declared width is a commitment; only free text resizes itself
     autoResize: !containerId && !wrapWidth,
     lineHeight: LINE_HEIGHT,
-    measured: wrapWidth ? { width: wrapWidth, height: measured.height } : measured,
+    // a wrapped block is as wide as its wrap box, or as its widest glyph when
+    // the box is narrower than that
+    measured: wrapWidth ? { width: Math.max(wrapWidth, measured.width), height: measured.height } : measured,
   };
 };
 
@@ -356,8 +416,14 @@ const textFields = (spec, containerId = null, containerWidth = null) => {
  *   points as [[x,y]]  re-based so the first point sits at the origin
  */
 /**
- * @param ink  default strokeColor for anything that does not set one; the
- *             caller derives it from the scene's paper (see paper.js)
+ * @param ink       default strokeColor for anything that does not set one; the
+ *                  caller derives it from the scene's paper (see paper.js)
+ * @param existing  what is already in the scene. Sets where the z-order
+ *                  continues from, and lets `start` / `end` bind to an id
+ *                  that is already on the canvas.
+ * @returns `{ elements, warnings, updated }`. `updated` holds full copies of
+ *          existing elements that gained a reverse binding entry and need
+ *          writing back; callers that only append can ignore it.
  */
 export function buildElements(rawSpecs, { existing = [], ink = "#1e1e1e" } = {}) {
   // parametric shapes and repeat/mirror macros become ordinary specs first
@@ -401,12 +467,15 @@ export function buildElements(rawSpecs, { existing = [], ink = "#1e1e1e" } = {})
     }
 
     if (LINEAR.has(spec.type) || spec.type === "freedraw") {
-      const points = normalisePoints(spec);
+      const { points, dx, dy } = normalisePoints(spec);
       el.points = points;
-      const xs = points.map((p) => p[0]);
-      const ys = points.map((p) => p[1]);
-      if (spec.width === undefined) el.width = Math.max(...xs) - Math.min(...xs);
-      if (spec.height === undefined) el.height = Math.max(...ys) - Math.min(...ys);
+      // an absolute run was re-based to its first point; that point is where
+      // the element sits, so the offset moves onto x/y rather than vanishing
+      el.x = num(el.x, 0) + dx;
+      el.y = num(el.y, 0) + dy;
+      const { minX, minY, maxX, maxY } = pointBounds(points);
+      if (spec.width === undefined) el.width = maxX - minX;
+      if (spec.height === undefined) el.height = maxY - minY;
       if (el.lastCommittedPoint === undefined) {
         el.lastCommittedPoint = spec.type === "freedraw" ? points.at(-1) : null;
       }
@@ -424,25 +493,36 @@ export function buildElements(rawSpecs, { existing = [], ink = "#1e1e1e" } = {})
       }
     }
 
-    if (spec.type === "frame" && el.name === undefined) el.name = null;
+    const label = spec.label;
+    const hasLabel = label !== undefined && label !== null && String(typeof label === "object" ? label.text ?? "" : label).length > 0;
+
+    if (spec.type === "frame") {
+      // a frame's label is its title bar, which Excalidraw stores as `name`
+      if (el.name === undefined) el.name = hasLabel ? String(typeof label === "object" ? label.text : label) : null;
+      else if (hasLabel) warnings.push(`frame already has a name; its label was ignored`);
+    } else if (hasLabel && !SHAPES.has(spec.type)) {
+      // a label is sugar for a container-bound text and only shapes are
+      // containers here; saying so beats a label that quietly never appears
+      warnings.push(
+        `label on a ${spec.type} was ignored: only rectangle, ellipse and diamond take a label (a frame's label becomes its name). Add a separate text element instead.`,
+      );
+    }
 
     slots.push(el);
     built.push(el);
     if (spec.ref) byRef.set(spec.ref, el);
 
     // a shape carrying a label gets a second, container-bound text element
-    const label = spec.label;
-    if (SHAPES.has(spec.type) && label !== undefined && label !== null && String(label).length) {
+    if (SHAPES.has(spec.type) && hasLabel) {
       const labelSpec = typeof label === "object" ? label : { text: String(label) };
       const { measured, ...fields } = textFields(
         { fontSize: spec.fontSize, fontFamily: spec.fontFamily, ...labelSpec },
-        el.id,
-        el.width,
+        el,
       );
 
       // a label that no longer fits grows its container, rather than spilling
       // out of it - the same thing Excalidraw does when you type past the edge
-      const needed = measured.height + BOUND_TEXT_PADDING * 2;
+      const needed = containerHeightFor(el.type, measured.height);
       if (needed > el.height) el.height = needed;
 
       const text = base(
@@ -468,29 +548,35 @@ export function buildElements(rawSpecs, { existing = [], ink = "#1e1e1e" } = {})
     }
   }
 
-  resolveBindings(specs ?? [], slots, built, byRef, warnings);
-  return { elements: built, warnings };
+  const updated = resolveBindings(specs ?? [], slots, built, byRef, warnings, existing);
+  return { elements: built, warnings, updated };
 }
 
 /**
  * Points are stored relative to the element origin with the first at [0,0].
  * Already-correct input passes through; `[{x,y}]` and absolute runs are fixed.
+ * Returns the offset that was taken off an absolute run, so the caller can
+ * put it back on x/y.
  */
 const normalisePoints = (spec) => {
   const raw = Array.isArray(spec.points) && spec.points.length >= 2 ? spec.points : null;
   if (!raw) {
     // no points given: a straight run across the declared box
-    return [
-      [0, 0],
-      [num(spec.width, 100), num(spec.height, 0)],
-    ];
+    return {
+      points: [
+        [0, 0],
+        [num(spec.width, 100), num(spec.height, 0)],
+      ],
+      dx: 0,
+      dy: 0,
+    };
   }
   const pts = raw.map((p) =>
     Array.isArray(p) ? [num(p[0], 0), num(p[1], 0)] : [num(p?.x, 0), num(p?.y, 0)],
   );
   const [ox, oy] = pts[0];
-  if (ox === 0 && oy === 0) return pts;
-  return pts.map(([px, py]) => [px - ox, py - oy]);
+  if (ox === 0 && oy === 0) return { points: pts, dx: 0, dy: 0 };
+  return { points: pts.map(([px, py]) => [px - ox, py - oy]), dx: ox, dy: oy };
 };
 
 /**
@@ -498,13 +584,23 @@ const normalisePoints = (spec) => {
  * lists the arrow. Excalidraw keeps the arrow attached while the shape moves
  * only if both halves are present.
  */
-const resolveBindings = (specs, slots, built, byRef, warnings) => {
+const resolveBindings = (specs, slots, built, byRef, warnings, existing = []) => {
   const byId = new Map(built.map((el) => [el.id, el]));
+  // an arrow may also point at something already on the canvas; that element
+  // is not ours to mutate in place, so the reverse entry goes on a copy that
+  // the caller writes back
+  const scene = new Map();
+  for (const el of existing) {
+    if (el?.id && !el.isDeleted && !byId.has(el.id)) scene.set(el.id, el);
+  }
+  const updated = new Map();
   const find = (target) => {
     if (!target) return null;
-    if (typeof target === "string") return byRef.get(target) ?? byId.get(target) ?? null;
+    if (typeof target === "string") {
+      return byRef.get(target) ?? byId.get(target) ?? scene.get(target) ?? null;
+    }
     if (target.ref) return byRef.get(target.ref) ?? null;
-    if (target.id) return byId.get(target.id) ?? null;
+    if (target.id) return byId.get(target.id) ?? scene.get(target.id) ?? null;
     return null;
   };
 
@@ -522,12 +618,19 @@ const resolveBindings = (specs, slots, built, byRef, warnings) => {
         continue;
       }
       el[bindKey] = { elementId: target.id, focus: 0, gap: 4 };
-      target.boundElements = [
-        ...(target.boundElements ?? []),
-        { id: el.id, type: "arrow" },
-      ];
+      const entry = { id: el.id, type: "arrow" };
+      if (byId.has(target.id)) {
+        target.boundElements = [...(target.boundElements ?? []), entry];
+      } else {
+        const current = updated.get(target.id) ?? target;
+        updated.set(
+          target.id,
+          patchElement(current, { boundElements: [...(current.boundElements ?? []), entry] }),
+        );
+      }
     }
   });
+  return [...updated.values()];
 };
 
 /**
@@ -541,11 +644,14 @@ export function patchElement(element, patch) {
     // to stay a valid fractional key; everything else is the caller's to change
     if (key === "id") continue;
     if (key === "index" && !isIndex(value)) continue;
+    // wrap is an instruction to this function, not a field of the element
+    if (key === "wrap") continue;
     next[key] = value;
   }
   const retext =
     patch.text !== undefined ||
     patch.fontSize !== undefined ||
+    patch.fontFamily !== undefined ||
     patch.width !== undefined ||
     patch.wrap !== undefined;
 
@@ -577,4 +683,23 @@ export function patchElement(element, patch) {
   next.versionNonce = nonce();
   next.updated = Date.now();
   return next;
+}
+
+/**
+ * After a bound label changes, the container may need to grow to hold it,
+ * exactly as it does when the label is first built. Returns the container
+ * with a taller height (and fresh version bookkeeping), or the very same
+ * object when it already fits, so `grown !== container` says whether there
+ * is anything to write.
+ *
+ * Kept separate from patchElement on purpose: a patch to one element must
+ * return one element. The caller that patches a text with a containerId looks
+ * the container up and calls this; the label's own y should then be re-centred
+ * in the taller box (`container.y + (container.height - text.height) / 2`).
+ */
+export function growContainerFor(text, container) {
+  if (!text || !container || text.containerId !== container.id) return container;
+  const needed = containerHeightFor(container.type, text.height ?? 0);
+  if (!(needed > (container.height ?? 0))) return container;
+  return patchElement(container, { height: needed });
 }

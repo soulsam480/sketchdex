@@ -12,7 +12,8 @@
  * So anything generated - imported SVG, parametric curves - passes through
  * here before it becomes an element: points are re-spaced along the arc at a
  * hand-sized step, curved runs are told to draw as curves, and fills default to
- * hachure. That is the whole difference between "vector art" and "Excalidraw".
+ * solid (see SKETCH_FILL). That is the whole difference between "vector art"
+ * and "Excalidraw".
  */
 
 /** How far apart anchors sit on a curve someone drew by hand, in scene px. */
@@ -32,13 +33,21 @@ export const SKETCH_FILL = "solid";
 const isClosed = (pts) =>
   pts.length > 2 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1];
 
+const finite = (p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]);
+
 /**
  * Re-space a polyline at roughly `step` units along its length, keeping the
  * first and last points (and so the closure) exactly. Never returns fewer
  * points than a closed loop needs to still look like its shape.
+ *
+ * A point with a NaN in it is dropped first. One bad coordinate would
+ * otherwise poison the running length and every point after it, and the
+ * result would serialise as `null` and break the scene file.
  */
-export const resample = (pts, step = SKETCH_STEP) => {
-  if (!Array.isArray(pts) || pts.length < 3) return pts;
+export const resample = (input, step = SKETCH_STEP) => {
+  if (!Array.isArray(input)) return input;
+  const pts = input.every(finite) ? input : input.filter(finite);
+  if (pts.length < 3) return pts;
   const closed = isClosed(pts);
   let total = 0;
   for (let i = 1; i < pts.length; i += 1) {

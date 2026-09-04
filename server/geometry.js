@@ -24,6 +24,40 @@ const rad = (deg) => (deg * Math.PI) / 180;
 const num = (value, fallback) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
+/**
+ * Bounding box of a point run, by loop. `Math.min(...xs)` puts every point on
+ * the call stack and throws past roughly 130k of them, which a dense import
+ * or an over-eager polygon reaches without trying.
+ */
+export const pointBounds = (points) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [px, py] of points) {
+    if (px < minX) minX = px;
+    if (px > maxX) maxX = px;
+    if (py < minY) minY = py;
+    if (py > maxY) maxY = py;
+  }
+  if (minX === Infinity) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  return { minX, minY, maxX, maxY };
+};
+
+/**
+ * Ceilings on the counts a spec can ask for. A polygon with 200k sides or a
+ * repeat of two million is a typo or a runaway loop, not a drawing, and
+ * honouring it stalls the server for everyone. The cap is reported rather
+ * than silently applied.
+ */
+const MAX_POINTS = 10000;
+const MAX_REPEAT = 2000;
+const capped = (value, max, what, warn) => {
+  if (value <= max) return value;
+  warn?.(`${what} ${value} capped at ${max}`);
+  return max;
+};
+
 /* ------------------------------------------------------------------ *
  * Primitives
  * ------------------------------------------------------------------ */
@@ -41,8 +75,7 @@ const fromAbsolute = (pts, spec, { closed = false, curved = false } = {}) => {
    * per segment, which is what a line drawn by hand looks like.
    */
   const points = curved ? resample(joined) : joined;
-  const xs = points.map((p) => p[0]);
-  const ys = points.map((p) => p[1]);
+  const { minX, minY, maxX, maxY } = pointBounds(points);
   /**
    * Excalidraw anchors a linear element at its *first point*, not at the corner
    * of its bounding box: `points[0]` is always `[0, 0]` and later points may be
@@ -65,16 +98,16 @@ const fromAbsolute = (pts, spec, { closed = false, curved = false } = {}) => {
     type: "line",
     x: originX,
     y: originY,
-    width: Math.max(...xs) - Math.min(...xs),
-    height: Math.max(...ys) - Math.min(...ys),
+    width: maxX - minX,
+    height: maxY - minY,
     points: points.map(([px, py]) => [px - originX, py - originY]),
     // a polygon keeps the corners it declares; a curve draws as a curve
     roundness: spec.roundness !== undefined ? spec.roundness : curved || smooth ? { type: 2 } : null,
   };
 };
 
-const polygon = (spec) => {
-  const sides = Math.max(3, Math.round(num(spec.sides, 6)));
+const polygon = (spec, warn) => {
+  const sides = capped(Math.max(3, Math.round(num(spec.sides, 6))), MAX_POINTS, "polygon sides", warn);
   const cx = num(spec.cx, num(spec.x, 0) + num(spec.width, 100) / 2);
   const cy = num(spec.cy, num(spec.y, 0) + num(spec.height, 100) / 2);
   const rx = num(spec.rx, num(spec.r, num(spec.width, 100) / 2));
@@ -89,8 +122,9 @@ const polygon = (spec) => {
   return fromAbsolute(pts, spec, { closed: true });
 };
 
-const star = (spec) => {
-  const count = Math.max(3, Math.round(num(spec.points, 5)));
+const star = (spec, warn) => {
+  // two vertices per point, so half the ceiling
+  const count = capped(Math.max(3, Math.round(num(spec.points, 5))), MAX_POINTS / 2, "star points", warn);
   const cx = num(spec.cx, num(spec.x, 0) + num(spec.width, 100) / 2);
   const cy = num(spec.cy, num(spec.y, 0) + num(spec.height, 100) / 2);
   const outer = num(spec.r, num(spec.width, 100) / 2);
@@ -106,14 +140,19 @@ const star = (spec) => {
   return fromAbsolute(pts, spec, { closed: true });
 };
 
-const arc = (spec) => {
+const arc = (spec, warn) => {
   const cx = num(spec.cx, 0);
   const cy = num(spec.cy, 0);
   const rx = num(spec.rx, num(spec.r, 50));
   const ry = num(spec.ry, num(spec.r, 50));
   const from = num(spec.from, 0);
   const to = num(spec.to, 180);
-  const steps = Math.max(4, Math.round(num(spec.segments, Math.abs(to - from) / 4)));
+  const steps = capped(
+    Math.max(4, Math.round(num(spec.segments, Math.abs(to - from) / 4))),
+    MAX_POINTS,
+    "arc segments",
+    warn,
+  );
 
   const pts = [];
   for (let i = 0; i <= steps; i += 1) {
@@ -125,13 +164,14 @@ const arc = (spec) => {
 };
 
 /** A rectangle with real rounded ends - the shape a limb or a plate wants. */
-const capsule = (spec) => {
+const capsule = (spec, warn) => {
   const x = num(spec.x, 0);
   const y = num(spec.y, 0);
   const w = num(spec.width, 100);
   const h = num(spec.height, 60);
   const r = Math.min(num(spec.radius, Math.min(w, h) / 2), Math.min(w, h) / 2);
-  const steps = Math.max(3, Math.round(num(spec.segments, 8)));
+  // four corners share the ceiling
+  const steps = capped(Math.max(3, Math.round(num(spec.segments, 8))), MAX_POINTS / 4, "capsule segments", warn);
 
   const corner = (ccx, ccy, startDeg) => {
     const out = [];
@@ -156,7 +196,7 @@ const capsule = (spec) => {
  * one of them, which is what you want when placing a silhouette by eye. Five
  * points in, a smooth run of sixty out.
  */
-const path = (spec) => {
+const path = (spec, warn) => {
   const raw = (spec.points ?? []).map((p) =>
     Array.isArray(p) ? [num(p[0], 0), num(p[1], 0)] : [num(p?.x, 0), num(p?.y, 0)],
   );
@@ -166,15 +206,21 @@ const path = (spec) => {
   }
 
   const closed = Boolean(spec.closed);
-  const res = Math.max(2, Math.round(num(spec.resolution, 10)));
+  const spans = closed ? raw.length : raw.length - 1;
+  // the ceiling is on the output, so a long path gets fewer samples per span
+  const res = capped(
+    Math.max(2, Math.round(num(spec.resolution, 10))),
+    Math.max(2, Math.floor(MAX_POINTS / spans)),
+    "path resolution",
+    warn,
+  );
   const at = (i) => {
     if (closed) return raw[(i + raw.length) % raw.length];
     return raw[Math.min(raw.length - 1, Math.max(0, i))];
   };
 
   const out = [];
-  const last = closed ? raw.length : raw.length - 1;
-  for (let i = 0; i < last; i += 1) {
+  for (let i = 0; i < spans; i += 1) {
     const p0 = at(i - 1);
     const p1 = at(i);
     const p2 = at(i + 1);
@@ -200,36 +246,68 @@ export const PRIMITIVE_TYPES = Object.keys(PRIMITIVES);
  * Macros
  * ------------------------------------------------------------------ */
 
+/** Types whose `points` are absolute scene coordinates rather than offsets. */
+const ABSOLUTE_POINTS = new Set(["path"]);
+
+/** Types anchored at their first point, with `points` relative to it. */
+const POINT_ANCHORED = new Set(["line", "arrow", "freedraw"]);
+
+const mapPoints = (points, fn) =>
+  points.map((p) =>
+    Array.isArray(p) ? fn(num(p[0], 0), num(p[1], 0)) : fn(num(p?.x, 0), num(p?.y, 0)),
+  );
+
 const shift = (spec, dx, dy) => {
   const moved = { ...spec };
-  if (typeof moved.x === "number") moved.x += dx;
-  if (typeof moved.y === "number") moved.y += dy;
+  // an element with no x sits at 0, so a shifted copy of it sits at dx
+  if (typeof moved.x === "number" || dx) moved.x = num(moved.x, 0) + dx;
+  if (typeof moved.y === "number" || dy) moved.y = num(moved.y, 0) + dy;
   if (typeof moved.cx === "number") moved.cx += dx;
   if (typeof moved.cy === "number") moved.cy += dy;
+  // a path is nothing but its absolute points, so those have to move too;
+  // relative points ride along with x/y and are left alone
+  if (ABSOLUTE_POINTS.has(moved.type) && Array.isArray(moved.points)) {
+    moved.points = mapPoints(moved.points, (px, py) => [px + dx, py + dy]);
+  }
   return moved;
 };
 
+/**
+ * Reflect a spec across the line x = at (vertical axis) or y = at
+ * (horizontal). Three kinds of geometry need three treatments: a box is
+ * mirrored by its far edge, a point-anchored line by its anchor with the
+ * offsets negated, and a path by every absolute point. Arc angles and
+ * polygon rotation are mapped too, so a bow keeps bowing outward.
+ */
 const flip = (spec, axis, at) => {
   const out = { ...spec };
-  const mirrorX = (v, width = 0) => 2 * at - v - width;
+  const anchored = POINT_ANCHORED.has(out.type);
+  const absolute = ABSOLUTE_POINTS.has(out.type);
   if (axis === "vertical") {
-    // reflect left-right across the vertical line x = at
-    if (typeof out.x === "number") out.x = mirrorX(out.x, num(out.width, 0));
+    if (typeof out.x === "number") out.x = 2 * at - out.x - (anchored ? 0 : num(out.width, 0));
     if (typeof out.cx === "number") out.cx = 2 * at - out.cx;
     if (Array.isArray(out.points)) {
-      out.points = out.points.map((p) =>
-        Array.isArray(p) ? [-p[0], p[1]] : [-num(p?.x, 0), num(p?.y, 0)],
-      );
+      out.points = absolute
+        ? mapPoints(out.points, (px, py) => [2 * at - px, py])
+        : mapPoints(out.points, (px, py) => [-px, py]);
     }
+    if (typeof out.from === "number") out.from = 180 - out.from;
+    if (typeof out.to === "number") out.to = 180 - out.to;
+    if (typeof out.rotation === "number") out.rotation = 180 - out.rotation;
   } else {
-    if (typeof out.y === "number") out.y = mirrorX(out.y, num(out.height, 0));
+    if (typeof out.y === "number") out.y = 2 * at - out.y - (anchored ? 0 : num(out.height, 0));
     if (typeof out.cy === "number") out.cy = 2 * at - out.cy;
     if (Array.isArray(out.points)) {
-      out.points = out.points.map((p) =>
-        Array.isArray(p) ? [p[0], -p[1]] : [num(p?.x, 0), -num(p?.y, 0)],
-      );
+      out.points = absolute
+        ? mapPoints(out.points, (px, py) => [px, 2 * at - py])
+        : mapPoints(out.points, (px, py) => [px, -py]);
     }
+    if (typeof out.from === "number") out.from = -out.from;
+    if (typeof out.to === "number") out.to = -out.to;
+    if (typeof out.rotation === "number") out.rotation = -out.rotation;
   }
+  // a rotated box mirrors into a box rotated the other way
+  if (typeof out.angle === "number") out.angle = -out.angle;
   // a mirrored copy is a new element, never the same one twice
   delete out.id;
   delete out.ref;
@@ -240,11 +318,11 @@ const flip = (spec, axis, at) => {
  * `repeat` turns one spec into a row, a grid, or a ring. A twelve-bolt flange
  * is one description rather than twelve, and it comes out actually even.
  */
-const applyRepeat = (spec) => {
+const applyRepeat = (spec, warn) => {
   const r = spec.repeat;
   if (!r) return [spec];
   const { repeat: _drop, ...base } = spec;
-  const count = Math.max(1, Math.round(num(r.count, 1)));
+  const count = capped(Math.max(1, Math.round(num(r.count, 1))), MAX_REPEAT, "repeat count", warn);
   const out = [];
 
   if (r.around) {
@@ -331,6 +409,8 @@ export function expandSpecs(specs) {
   const out = [];
   const warnings = [];
 
+  const warn = (message) => warnings.push(message);
+
   for (const raw of specs ?? []) {
     if (!raw || typeof raw !== "object") {
       out.push(raw);
@@ -339,14 +419,14 @@ export function expandSpecs(specs) {
     const spec = unwrapKeyed(raw);
     // mirror before repeat, so a mirrored pair can then be arrayed
     for (const mirrored of applyMirror(spec)) {
-      for (const copy of applyRepeat(mirrored)) {
+      for (const copy of applyRepeat(mirrored, warn)) {
         const make = PRIMITIVES[copy.type];
         if (!make) {
           out.push(copy);
           continue;
         }
         try {
-          out.push(make(copy));
+          out.push(make(copy, warn));
         } catch (err) {
           warnings.push(`could not build ${copy.type}: ${err?.message ?? err}`);
         }

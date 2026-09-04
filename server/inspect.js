@@ -205,13 +205,28 @@ export function inspectScene(elements, { limit = 60 } = {}) {
   }
 
   /* bound labels taller than their container ------------------------ */
+  /**
+   * Excalidraw's own ceilings: a rectangle offers its height less the
+   * padding, a diamond and an ellipse only the inscribed box. An arrow's
+   * label is allowed to be exactly as tall as itself, so arrows are never
+   * too short for their label and are skipped.
+   */
+  const PADDING_BOUND = 5;
+  const labelMaxHeight = (container) => {
+    const h = container.height ?? 0;
+    if (container.type === "diamond") return Math.round(h / 2) - PADDING_BOUND * 2;
+    if (container.type === "ellipse") return Math.round((h / 2) * Math.SQRT2) - PADDING_BOUND * 2;
+    return h - PADDING_BOUND * 2;
+  };
   for (const text of all.filter((el) => el.containerId)) {
     const container = byId.get(text.containerId);
     if (!container) {
       add("error", "orphan-label", `A bound label points at a container that is not in the scene.`, [text.id]);
       continue;
     }
-    if ((text.height ?? 0) > (container.height ?? 0) - 6) {
+    if (container.type === "arrow" || container.type === "line") continue;
+    // measured height can sit a pixel or two off Excalidraw's, so allow a little
+    if ((text.height ?? 0) > labelMaxHeight(container) + 4) {
       add(
         "warning",
         "label-too-tall",

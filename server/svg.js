@@ -1,4 +1,5 @@
 import { measureText } from "./elements.js";
+import { pointBounds } from "./geometry.js";
 import { fillFor, sketchLine, snapStrokeWidth, SKETCH_STEP } from "./sketch.js";
 /**
  * SVG in, native Excalidraw elements out.
@@ -14,26 +15,29 @@ import { fillFor, sketchLine, snapStrokeWidth, SKETCH_STEP } from "./sketch.js";
  * canvas like anything drawn by hand.
  *
  * Supported: path (M L H V C S Q T A Z, absolute and relative), rect, circle,
- * ellipse, line, polyline, polygon, g nesting, transform (translate scale
- * rotate matrix skewX skewY), presentation attributes and inline style, text.
+ * ellipse, line, polyline, polygon, g nesting, symbol via use, transform
+ * (translate scale rotate matrix skewX skewY), presentation attributes,
+ * `<style>` rules, inline style, text. Gradients flatten to their first stop,
+ * with a warning.
  *
- * Not supported, and dropped with a warning rather than faked: gradients,
- * filters, clip paths, masks, patterns, and holes in a fill - Excalidraw has no
- * even-odd fill, so each subpath becomes its own element.
+ * Not supported, and dropped with a warning rather than faked: filters, clip
+ * paths, masks, patterns, and holes in a fill - Excalidraw has no even-odd
+ * fill, so each subpath becomes its own element.
  */
 
 /* ------------------------------------------------------------------ *
  * A very small XML reader
  *
  * There is no DOM here and pulling in a parser for this would be silly: SVG
- * written by a model is well-formed and shallow. Comments, doctypes and CDATA
- * are skipped; everything else becomes {tag, attrs, children}.
+ * written by a model is well-formed and shallow. Comments and doctypes are
+ * skipped, a CDATA section is unwrapped to its text (Illustrator wraps every
+ * `<style>` block in one), and everything else becomes {tag, attrs, children}.
  * ------------------------------------------------------------------ */
 
 const parseXml = (source) => {
   const clean = source
     .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, (_, inner) => inner)
     .replace(/<\?[\s\S]*?\?>/g, "")
     .replace(/<!DOCTYPE[^>]*>/gi, "");
 
@@ -226,6 +230,7 @@ const readStyle = (attrs, tag = "", css = new Map()) => {
     textAnchor: get("text-anchor"),
     baseline: get("dominant-baseline") ?? get("alignment-baseline"),
     display: get("display"),
+    stopColor: get("stop-color"),
   };
 };
 
@@ -234,6 +239,33 @@ const readStyle = (attrs, tag = "", css = new Map()) => {
  * ------------------------------------------------------------------ */
 
 const NUMBER_RE = /[+-]?(?:\d*\.\d+|\d+\.?)(?:[eE][+-]?\d+)?/g;
+
+/**
+ * Arguments of an arc command. The two flags are single characters that the
+ * spec lets an author glue straight onto the number after them, so
+ * `a5 5 0 0110 0` is rx 5, ry 5, rotation 0, flags 0 and 1, then 10 0. A
+ * plain number scan reads "0110" as one value and the arc falls apart.
+ */
+const arcArgs = (text) => {
+  const numberAt = /[\s,]*([+-]?(?:\d*\.\d+|\d+\.?)(?:[eE][+-]?\d+)?)/y;
+  const flagAt = /[\s,]*([01])/y;
+  const out = [];
+  let at = 0;
+  for (;;) {
+    const before = out.length;
+    for (let k = 0; k < 7; k += 1) {
+      const re = k === 3 || k === 4 ? flagAt : numberAt;
+      re.lastIndex = at;
+      const m = re.exec(text);
+      if (!m) break;
+      out.push(Number(m[1]));
+      at = re.lastIndex;
+    }
+    // a short set is a malformed tail; keep what was read and let the
+    // command handler report the missing point
+    if (out.length - before < 7) return out;
+  }
+};
 
 /**
  * An SVG font stack to one of Excalidraw's families.
@@ -275,6 +307,9 @@ const cubic = (out, p0, p1, p2, p3, tolerance) => {
 /** Endpoint-parameterised arc to centre form, then sampled. */
 const arcTo = (out, p0, rx, ry, angle, largeArc, sweep, p1, tolerance) => {
   if (!rx || !ry) return out.push(p1);
+  // the spec omits an arc whose endpoints coincide; the centre maths below
+  // divides by zero for it
+  if (p0[0] === p1[0] && p0[1] === p1[1]) return;
   const rad = (angle * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
@@ -334,7 +369,14 @@ const arcTo = (out, p0, rx, ry, angle, largeArc, sweep, p1, tolerance) => {
  * Path data to one point run per subpath. Each `M` starts a new run, which is
  * how a shape with a hole arrives here - and why it leaves as two elements.
  */
-const parsePath = (d, tolerance) => {
+const finitePoint = (p) => Number.isFinite(p[0]) && Number.isFinite(p[1]);
+
+/**
+ * @param warnings  receives one line per command letter whose arguments came
+ *                  up short or non-numeric; those points are dropped rather
+ *                  than written out as null
+ */
+const parsePath = (d, tolerance, warnings = []) => {
   const runs = [];
   let points = null;
   let current = [0, 0];
@@ -344,11 +386,28 @@ const parsePath = (d, tolerance) => {
   // whether the run in progress has had a real curve command; a run of L/H/V
   // is a polygon and should keep its corners, a run with C/Q/A is a curve
   let curved = false;
+  const reported = new Set();
+  const dropped = (code) => {
+    if (reported.has(code)) return;
+    reported.add(code);
+    warnings.push(`path command "${code}" had missing or non-numeric arguments; that point was dropped`);
+  };
 
   const commands = String(d ?? "").match(/[MmLlHhVvCcSsQqTtAaZz][^MmLlHhVvCcSsQqTtAaZz]*/g) ?? [];
 
+  const flush = (closed) => {
+    if (!points) return;
+    // a bad coordinate that slipped past the per-command checks (a NaN out of
+    // the arc maths, say) must not reach the file
+    const kept = points.filter(finitePoint);
+    if (kept.length !== points.length && !reported.has("nan")) {
+      reported.add("nan");
+      warnings.push("a path produced a non-numeric point (a degenerate curve, most likely); it was dropped");
+    }
+    if (kept.length > 1) runs.push({ points: kept, closed, curved });
+  };
   const begin = () => {
-    if (points && points.length > 1) runs.push({ points, closed: false, curved });
+    flush(false);
     points = [];
     curved = false;
   };
@@ -357,12 +416,15 @@ const parsePath = (d, tolerance) => {
     const code = chunk[0];
     const type = code.toUpperCase();
     const relative = code !== type;
-    const nums = (chunk.slice(1).match(NUMBER_RE) ?? []).map(Number);
+    const nums =
+      type === "A"
+        ? arcArgs(chunk.slice(1))
+        : (chunk.slice(1).match(NUMBER_RE) ?? []).map(Number);
     const rel = ([x, y]) => (relative ? [current[0] + x, current[1] + y] : [x, y]);
 
     if (type === "Z") {
       if (points && points.length > 1) {
-        runs.push({ points, closed: true, curved });
+        flush(true);
         points = [[...start]];
         current = [...start];
         curved = false;
@@ -377,13 +439,21 @@ const parsePath = (d, tolerance) => {
           const p = rel([nums[i], nums[i + 1]]);
           i += 2;
           begin();
+          if (!finitePoint(p)) {
+            dropped(code);
+            break;
+          }
           points.push(p);
           current = p;
           start = p;
           // extra pairs after an M are implicit L
-          while (i + 1 < nums.length) {
+          while (i < nums.length) {
             const q = relative ? [current[0] + nums[i], current[1] + nums[i + 1]] : [nums[i], nums[i + 1]];
             i += 2;
+            if (!finitePoint(q)) {
+              dropped(code);
+              break;
+            }
             points.push(q);
             current = q;
           }
@@ -392,6 +462,10 @@ const parsePath = (d, tolerance) => {
         case "L": {
           const p = rel([nums[i], nums[i + 1]]);
           i += 2;
+          if (!finitePoint(p)) {
+            dropped(code);
+            break;
+          }
           points.push(p);
           current = p;
           break;
@@ -399,6 +473,10 @@ const parsePath = (d, tolerance) => {
         case "H": {
           const p = [relative ? current[0] + nums[i] : nums[i], current[1]];
           i += 1;
+          if (!finitePoint(p)) {
+            dropped(code);
+            break;
+          }
           points.push(p);
           current = p;
           break;
@@ -406,6 +484,10 @@ const parsePath = (d, tolerance) => {
         case "V": {
           const p = [current[0], relative ? current[1] + nums[i] : nums[i]];
           i += 1;
+          if (!finitePoint(p)) {
+            dropped(code);
+            break;
+          }
           points.push(p);
           current = p;
           break;
@@ -415,6 +497,10 @@ const parsePath = (d, tolerance) => {
           const c2 = rel([nums[i + 2], nums[i + 3]]);
           const end = rel([nums[i + 4], nums[i + 5]]);
           i += 6;
+          if (!finitePoint(c1) || !finitePoint(c2) || !finitePoint(end)) {
+            dropped(code);
+            break;
+          }
           curved = true;
           cubic(points, current, c1, c2, end, tolerance);
           lastControl = c2;
@@ -425,6 +511,10 @@ const parsePath = (d, tolerance) => {
           const c2 = rel([nums[i], nums[i + 1]]);
           const end = rel([nums[i + 2], nums[i + 3]]);
           i += 4;
+          if (!finitePoint(c2) || !finitePoint(end)) {
+            dropped(code);
+            break;
+          }
           const c1 = lastControl
             ? [2 * current[0] - lastControl[0], 2 * current[1] - lastControl[1]]
             : current;
@@ -438,6 +528,10 @@ const parsePath = (d, tolerance) => {
           const q = rel([nums[i], nums[i + 1]]);
           const end = rel([nums[i + 2], nums[i + 3]]);
           i += 4;
+          if (!finitePoint(q) || !finitePoint(end)) {
+            dropped(code);
+            break;
+          }
           // a quadratic is a cubic with the control points at two thirds
           curved = true;
           cubic(
@@ -455,6 +549,10 @@ const parsePath = (d, tolerance) => {
         case "T": {
           const end = rel([nums[i], nums[i + 1]]);
           i += 2;
+          if (!finitePoint(end)) {
+            dropped(code);
+            break;
+          }
           const q = lastQuad
             ? [2 * current[0] - lastQuad[0], 2 * current[1] - lastQuad[1]]
             : current;
@@ -475,6 +573,10 @@ const parsePath = (d, tolerance) => {
           const [rx, ry, rot, large, sweep] = nums.slice(i, i + 5);
           const end = rel([nums[i + 5], nums[i + 6]]);
           i += 7;
+          if (![rx, ry, rot, large, sweep].every(Number.isFinite) || !finitePoint(end)) {
+            dropped(code);
+            break;
+          }
           curved = true;
           arcTo(points, current, rx, ry, rot, large, sweep, end, tolerance);
           current = end;
@@ -489,7 +591,7 @@ const parsePath = (d, tolerance) => {
       if (i >= nums.length) break;
     }
   }
-  if (points && points.length > 1) runs.push({ points, closed: false, curved });
+  flush(false);
   return runs;
 };
 
@@ -601,11 +703,16 @@ export function svgToSpecs(svg, options = {}) {
           continue;
         }
         const placed = multiply(local, [1, 0, 0, 1, num(child.attrs.x), num(child.attrs.y)]);
-        walk({ children: [{ ...target, attrs: { ...target.attrs, id: undefined } }] }, placed, style, depth + 1);
+        walk({ children: [{ ...target, attrs: { ...target.attrs, id: undefined }, viaUse: true }] }, placed, style, depth + 1);
         continue;
       }
 
       switch (child.tag) {
+        case "symbol":
+          // a symbol is a template: it draws where a <use> places it and
+          // nowhere else, so in the ordinary walk it is skipped like defs
+          if (child.viaUse) walk(child, local, style, depth + 1);
+          break;
         case "g":
         case "svg":
         case "a":
@@ -617,7 +724,7 @@ export function svgToSpecs(svg, options = {}) {
           walk(child, local, style, depth + 1);
           break;
         case "path": {
-          const runs = parsePath(child.attrs.d, tolerance);
+          const runs = parsePath(child.attrs.d, tolerance, warnings);
           const filled = style.fill && style.fill !== "none";
 
           /**
@@ -765,17 +872,23 @@ export function svgToSpecs(svg, options = {}) {
     if (value === "currentColor") return currentColor;
     const url = String(value ?? "").match(/url\(\s*#([^)\s]+)\s*\)/);
     if (url) {
-      const node = byId.get(url[1]);
-      const stop = node && (function firstStop(n) {
+      /**
+       * The colour may sit on the stop as an attribute, in its inline style,
+       * or on a class. And exporters routinely split a gradient in two: one
+       * node holding the stops, another that only sets the geometry and
+       * points back at it with href, so a stopless node is followed.
+       */
+      const firstStop = (n, hops = 0) => {
+        if (!n || hops > 8) return null;
         for (const child of n.children) {
-          if (child.tag === "stop") {
-            return readStyle(child.attrs, "stop", css)["stop-color"] ?? child.attrs["stop-color"];
-          }
-          const deeper = firstStop(child);
+          if (child.tag === "stop") return readStyle(child.attrs, "stop", css).stopColor ?? null;
+          const deeper = firstStop(child, hops);
           if (deeper) return deeper;
         }
-        return null;
-      })(node);
+        const href = (n.attrs?.href ?? n.attrs?.["xlink:href"] ?? "").replace(/^#/, "");
+        return href ? firstStop(byId.get(href), hops + 1) : null;
+      };
+      const stop = firstStop(byId.get(url[1]));
       if (stop) {
         warnings.push(`gradient "${url[1]}" flattened to its first stop`);
         return toHex(stop);
@@ -786,7 +899,13 @@ export function svgToSpecs(svg, options = {}) {
     return toHex(value);
   };
 
-  walk(svgNode, IDENTITY, {});
+  /**
+   * The root carries presentation attributes like any group: an icon set
+   * writes `fill="none" stroke="currentColor" stroke-width="2"` on the
+   * `<svg>` itself and nothing on the paths. Ignoring it turned every such
+   * icon into a filled black shape with a hairline stroke.
+   */
+  walk(svgNode, parseTransform(svgNode.attrs.transform), clean(readStyle(svgNode.attrs, "svg", css)));
   if (dropped.size) {
     warnings.push(`ignored unsupported elements: ${[...dropped].join(", ")}`);
   }
@@ -825,18 +944,21 @@ export function svgToSpecs(svg, options = {}) {
   const viewBox = (svgNode.attrs.viewBox ?? "").match(NUMBER_RE)?.map(Number);
   const declared = viewBox?.length === 4 && viewBox[2] > 0 && viewBox[3] > 0;
 
-  const xs = [];
-  const ys = [];
+  // by loop: a spread over every point of a big file overflows the stack
+  let painted = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
   for (const shape of shapes) {
-    for (const [px, py] of shape.points ?? [shape.at]) {
-      xs.push(px);
-      ys.push(py);
-    }
+    const b = pointBounds(shape.points ?? [shape.at]);
+    painted = {
+      minX: Math.min(painted.minX, b.minX),
+      minY: Math.min(painted.minY, b.minY),
+      maxX: Math.max(painted.maxX, b.maxX),
+      maxY: Math.max(painted.maxY, b.maxY),
+    };
   }
-  const minX = declared ? viewBox[0] : Math.min(...xs);
-  const minY = declared ? viewBox[1] : Math.min(...ys);
-  const srcW = declared ? viewBox[2] : Math.max(1e-6, Math.max(...xs) - minX);
-  const srcH = declared ? viewBox[3] : Math.max(1e-6, Math.max(...ys) - minY);
+  const minX = declared ? viewBox[0] : painted.minX;
+  const minY = declared ? viewBox[1] : painted.minY;
+  const srcW = declared ? viewBox[2] : Math.max(1e-6, painted.maxX - minX);
+  const srcH = declared ? viewBox[3] : Math.max(1e-6, painted.maxY - minY);
 
   const targetW = options.width ?? srcW;
   const targetH = options.height ?? (options.width ? (srcH * options.width) / srcW : srcH);
@@ -941,13 +1063,13 @@ export function svgToSpecs(svg, options = {}) {
 
     const fill = paint(style.fill);
     const stroke = paint(style.stroke);
-    // an SVG shape with no fill attribute is filled black; one that is only
-    // stroked must not become a black blob here
+    // SVG's own default for a shape with no fill is black; here it stays
+    // transparent and draws as an outline in the current ink, because a black
+    // blob is never what a hand-written SVG meant
     let resolvedFill = style.fill === undefined && style.stroke ? "transparent" : (fill ?? "transparent");
     if (shape.isHole && holeColor) resolvedFill = holeColor;
 
-    const xsP = points.map((p) => p[0]);
-    const ysP = points.map((p) => p[1]);
+    const { minX: left, minY: top, maxX: right, maxY: bottom } = pointBounds(points);
     // anchored at the first point, which is Excalidraw's convention for linear
     // elements: points[0] is [0,0] and the rest may be negative
     const [x, y] = points[0];
@@ -956,8 +1078,8 @@ export function svgToSpecs(svg, options = {}) {
       type: "line",
       x,
       y,
-      width: Math.max(...xsP) - Math.min(...xsP),
-      height: Math.max(...ysP) - Math.min(...ysP),
+      width: right - left,
+      height: bottom - top,
       points: points.map(([px, py]) => [px - x, py - y]),
       strokeColor: stroke ?? (resolvedFill !== "transparent" ? resolvedFill : currentColor),
       backgroundColor: resolvedFill,
