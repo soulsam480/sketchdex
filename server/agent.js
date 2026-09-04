@@ -528,16 +528,57 @@ export function createAgentApi(vaultPath) {
         }
 
         const moved = [];
+        let followed = 0;
         const elements = payload.elements.map((el) => {
-          if (!moving.has(el.id)) return el;
-          const next = patchElement(el, { x: el.x + dx, y: el.y + dy });
-          moved.push(next);
-          return next;
+          if (moving.has(el.id)) {
+            const next = patchElement(el, { x: el.x + dx, y: el.y + dy });
+            moved.push(next);
+            return next;
+          }
+          /**
+           * An arrow that stays put but is bound to something that moved
+           * keeps that end on the shape, the way Excalidraw drags it along.
+           * Without this the arrowhead is left pointing at empty paper, or
+           * buried inside the shape's new position, and the render looks
+           * right only until the editor opens the file.
+           */
+          if (el.type !== "arrow" || !Array.isArray(el.points) || el.points.length < 2) return el;
+          const startFollows = !!el.startBinding && moving.has(el.startBinding.elementId);
+          const endFollows = !!el.endBinding && moving.has(el.endBinding.elementId);
+          if (!startFollows && !endFollows) return el;
+          const points = el.points.map((p) => [p[0], p[1]]);
+          let { x, y } = el;
+          if (startFollows) {
+            // the first point is always [0, 0]: move the origin and keep the
+            // rest of the line where it was
+            x += dx;
+            y += dy;
+            for (let i = 1; i < points.length; i += 1) {
+              points[i][0] -= dx;
+              points[i][1] -= dy;
+            }
+          }
+          if (endFollows) {
+            const last = points[points.length - 1];
+            last[0] += dx;
+            last[1] += dy;
+          }
+          const xs = points.map((p) => p[0]);
+          const ys = points.map((p) => p[1]);
+          followed += 1;
+          return patchElement(el, {
+            x,
+            y,
+            points,
+            width: Math.max(...xs) - Math.min(...xs),
+            height: Math.max(...ys) - Math.min(...ys),
+          });
         });
         return {
           elements,
           result: {
             moved: moved.length,
+            followed,
             missing: [...wantedIds].filter((id) => !moving.has(id)),
             bounds: bounds(moved),
           },

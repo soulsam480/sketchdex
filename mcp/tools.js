@@ -261,7 +261,7 @@ const TOOLS = [
   {
     name: "move_elements",
     description:
-      "Shift a set of elements by dx, dy in one write, keeping everything else about them. Select by ids, groupIds (an import_svg piece), a region box, or any mix; a container's label always moves with it. Include an arrow together with what it points at, or it is left behind. Returns the new bounds of what moved.",
+      "Shift a set of elements by dx, dy in one write, keeping everything else about them. Select by ids, groupIds (an import_svg piece), a region box, or any mix. A container's label always moves with it, and an arrow bound to something that moves keeps that end attached (include the arrow itself to move it whole). Returns the new bounds of what moved.",
     inputSchema: {
       type: "object",
       properties: {

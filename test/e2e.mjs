@@ -142,9 +142,17 @@ await call("update_elements", { scene: "E2E", label: "nudge the box", elements: 
 const [box] = JSON.parse(text(await call("read_elements", { scene: "E2E", ids: [boxId] }))).elements;
 assert(box.x === 20 && box.width === 220, "delta update changed more than it should");
 
+// moving a bound shape drags the arrow's end along, so the editor and the render agree
+const ellipseId = made.elements.find((e) => e.type === "ellipse").id;
+const moved = JSON.parse(text(await call("move_elements", { scene: "E2E", label: "shift the ellipse", ids: [ellipseId], dx: 30, dy: 10 })));
+assert(moved.moved === 2 && moved.followed === 1, `move_elements moved ${moved.moved} and followed ${moved.followed}, expected 2 and 1`);
+const [arrow] = JSON.parse(text(await call("read_elements", { scene: "E2E", type: "arrow" }))).elements;
+const tip = arrow.points[arrow.points.length - 1];
+assert(arrow.x === 225 && tip[0] === 180 && tip[1] === 10, `arrow end did not follow the ellipse: x=${arrow.x} tip=${JSON.stringify(tip)}`);
+
 const history = JSON.parse(text(await call("list_history", { scene: "E2E" })));
-assert(history.entries?.length === 1 && history.entries[0].label === "nudge the box", "write was not snapshotted with its label");
-log("create, describe, delta update, history ok");
+assert(history.entries?.length === 2 && history.entries[0].label === "shift the ellipse", "write was not snapshotted with its label");
+log("create, describe, delta update, move with bound arrow, history ok");
 
 const t0 = Date.now();
 const render = await call("render_scene", { scene: "E2E", scale: 2 });
