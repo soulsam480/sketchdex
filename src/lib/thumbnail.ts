@@ -2,9 +2,11 @@ import { exportToSvg } from "@excalidraw/excalidraw";
 import type { ScenePayload } from "./types";
 
 /**
- * Renders a scene to an inline SVG string used as the card preview in the
- * library. Fonts are skipped so the files in the vault's thumbs/ folder stay
- * small.
+ * Renders a scene to an SVG string used as the card preview in the library.
+ * The preview is shown through an <img>, which cannot reach the page's fonts,
+ * so the fonts a scene uses are inlined into the SVG. That costs a few tens
+ * of KB per preview in the vault's thumbs/ folder; without it every label
+ * fell back to a serif and no card looked like its scene.
  */
 export const renderThumbnail = async (
   payload: ScenePayload,
@@ -24,7 +26,7 @@ export const renderThumbnail = async (
       },
       files: (payload.files ?? {}) as any,
       exportPadding: 24,
-      skipInliningFonts: true,
+      skipInliningFonts: false,
     });
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     return new XMLSerializer().serializeToString(svg);
