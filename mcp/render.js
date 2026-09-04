@@ -1,5 +1,6 @@
 import http from "node:http";
 import fs from "node:fs/promises";
+import fsSync, { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -10,13 +11,19 @@ import { fileURLToPath } from "node:url";
  *
  * The library thumbnails are SVG squeezed into a card, which is why their
  * strokes read as heavier or lighter than the real thing. This runs Excalidraw's
- * own canvas export in a hidden Electron window instead, at real size.
+ * own canvas export in a hidden browser window instead, at real size.
  *
- * Ports: if the dev server is already up on 5173 this uses it and opens nothing
- * of its own - render.html is part of the same build and reads the scene through
- * the normal /api routes. Only when nothing is running does it fall back to a
- * throwaway static server on an ephemeral port, which exists for the length of
- * one screenshot. So: normally no extra port at all.
+ * Which browser: a Chromium already on the machine (Chrome, Chromium, Edge,
+ * Brave) run headless, so an `npx sketchdex` install needs nothing downloaded.
+ * In a checkout that has Electron installed, Electron is the fallback, and
+ * SKETCHDEX_BROWSER=<path to a binary> overrides both.
+ *
+ * Ports: if the dev server is already up on 5173 the page is loaded from it and
+ * reads the scene through the normal /api routes. Otherwise a throwaway server
+ * on an ephemeral port serves dist/ and the scene for the length of one render.
+ * Either way a throwaway server carries the result back: the page POSTs its
+ * image to /__result, which is what lets any headless browser work without a
+ * debugging protocol.
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +31,40 @@ const repo = path.resolve(here, "..");
 const dist = path.join(repo, "dist");
 
 const DEV_PORTS = [5173, 4173];
+const DEADLINE = 60_000;
+const RENDER_DIR = path.join(os.tmpdir(), "sketchdex-renders");
+const KEEP_FOR = 24 * 60 * 60 * 1000;
+
+/**
+ * Browsers this process has launched and not yet reaped. A worker that is
+ * killed mid-render (client gone, or a reload in a checkout) never reaches
+ * the `finally` below, so they are also killed from the exit hook.
+ */
+const liveBrowsers = new Set();
+process.on("exit", () => {
+  for (const { child, profile } of liveBrowsers) {
+    try {
+      child.kill();
+    } catch {
+      // already gone
+    }
+    if (profile) fsSync.rmSync(profile, { recursive: true, force: true });
+  }
+});
+
+/** Renders and spilled results are written for the caller to read; they are not kept. */
+let pruned = false;
+const pruneOldOutput = async () => {
+  if (pruned) return;
+  pruned = true;
+  const names = await fs.readdir(RENDER_DIR).catch(() => []);
+  const cutoff = Date.now() - KEEP_FOR;
+  for (const name of names) {
+    const file = path.join(RENDER_DIR, name);
+    const stat = await fs.stat(file).catch(() => null);
+    if (stat && stat.mtimeMs < cutoff) await fs.rm(file, { force: true }).catch(() => {});
+  }
+};
 
 const MIME = {
   ".html": "text/html",
@@ -37,17 +78,123 @@ const MIME = {
   ".png": "image/png",
 };
 
+/* ─── finding a browser ─────────────────────────────────────────────── */
+
+const MAC_APPS = [
+  "Google Chrome.app/Contents/MacOS/Google Chrome",
+  "Chromium.app/Contents/MacOS/Chromium",
+  "Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "Brave Browser.app/Contents/MacOS/Brave Browser",
+  "Vivaldi.app/Contents/MacOS/Vivaldi",
+  "Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+];
+const LINUX_NAMES = [
+  "google-chrome",
+  "google-chrome-stable",
+  "chromium",
+  "chromium-browser",
+  "microsoft-edge",
+  "brave-browser",
+];
+const WIN_PATHS = [
+  ["Google", "Chrome", "Application", "chrome.exe"],
+  ["Microsoft", "Edge", "Application", "msedge.exe"],
+  ["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
+  ["Chromium", "Application", "chrome.exe"],
+];
+
+const inPath = (name) => {
+  const ext = process.platform === "win32" ? ".exe" : "";
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+    const candidate = path.join(dir, name + ext);
+    if (dir && existsSync(candidate)) return candidate;
+  }
+  return null;
+};
+
+const findChromium = () => {
+  if (process.platform === "darwin") {
+    for (const base of ["/Applications", path.join(os.homedir(), "Applications")]) {
+      for (const app of MAC_APPS) {
+        const bin = path.join(base, app);
+        if (existsSync(bin)) return bin;
+      }
+    }
+    return null;
+  }
+  if (process.platform === "win32") {
+    const roots = [
+      process.env["PROGRAMFILES"],
+      process.env["PROGRAMFILES(X86)"],
+      process.env.LOCALAPPDATA,
+    ].filter(Boolean);
+    for (const root of roots) {
+      for (const parts of WIN_PATHS) {
+        const bin = path.join(root, ...parts);
+        if (existsSync(bin)) return bin;
+      }
+    }
+    return null;
+  }
+  for (const name of LINUX_NAMES) {
+    const bin = inPath(name);
+    if (bin) return bin;
+  }
+  return null;
+};
+
+/** Electron's binary, only in a checkout where it is installed. */
+const findElectron = async () => {
+  try {
+    const bin = (await import("electron")).default;
+    return typeof bin === "string" && existsSync(bin) ? bin : null;
+  } catch {
+    return null;
+  }
+};
+
+let browserPromise = null;
+/** @returns {{ kind: "chromium" | "electron", bin: string } | null} */
+const findBrowser = () => {
+  if (!browserPromise) {
+    browserPromise = (async () => {
+      const forced = process.env.SKETCHDEX_BROWSER;
+      if (forced) {
+        const kind = /electron/i.test(forced) ? "electron" : "chromium";
+        return { kind, bin: forced };
+      }
+      const chromium = findChromium();
+      if (chromium) return { kind: "chromium", bin: chromium };
+      const electron = await findElectron();
+      if (electron) return { kind: "electron", bin: electron };
+      return null;
+    })();
+  }
+  return browserPromise;
+};
+
+export const NO_BROWSER_MESSAGE =
+  "render_scene needs a Chromium-based browser installed (Chrome, Chromium, Edge or Brave). None was found. Install one, or set SKETCHDEX_BROWSER to the path of a browser binary.";
+
+/* ─── serving the page ──────────────────────────────────────────────── */
+
 let building = null;
 
 /** The render page is part of the normal build; build once if it is missing. */
 const ensureBuild = async () => {
   const entry = path.join(dist, "render.html");
   if (await fs.access(entry).then(() => true, () => false)) return;
+  if (!existsSync(path.join(repo, "node_modules", "vite"))) {
+    throw new Error(
+      "the built render page (dist/render.html) is missing and this is not a dev checkout, so it cannot be built here. Reinstall sketchdex.",
+    );
+  }
   if (!building) {
     building = new Promise((resolve, reject) => {
       const child = spawn("npm", ["run", "build"], {
         cwd: repo,
         stdio: ["ignore", "ignore", "pipe"],
+        shell: process.platform === "win32",
       });
       let stderr = "";
       child.stderr.on("data", (chunk) => {
@@ -91,14 +238,48 @@ const findRunningServer = async (vault) => {
   return null;
 };
 
-/** Fallback when nothing is running: serve dist/ and the scene, briefly. */
-const startTempServer = async (payload) => {
-  await ensureBuild();
+const readBody = (req) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+
+/**
+ * The throwaway server. Always present for the length of one render: it is
+ * where the page posts its result. When no dev server is running it also
+ * serves dist/ and the scene payload.
+ */
+const startTempServer = async ({ payload, serveDist }) => {
+  if (serveDist) await ensureBuild();
+  let settle = null;
+  const result = new Promise((resolve) => {
+    settle = resolve;
+  });
+
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
-    if (url.pathname === "/__payload") {
+    // the page may live on another origin (the dev server); let it post here
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    if (url.pathname === "/__result" && req.method === "POST") {
+      const raw = await readBody(req).catch(() => "");
+      res.writeHead(204);
+      res.end();
+      try {
+        settle(JSON.parse(raw));
+      } catch (err) {
+        settle({ error: `unreadable render result: ${err}` });
+      }
+      return;
+    }
+    if (url.pathname === "/__payload" && payload) {
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(payload);
+    }
+    if (!serveDist) {
+      res.writeHead(404);
+      return res.end();
     }
     const rel = url.pathname === "/" ? "/render.html" : url.pathname;
     const file = path.join(dist, path.normalize(rel).replace(/^(\.\.[/\\])+/, ""));
@@ -118,12 +299,101 @@ const startTempServer = async (payload) => {
     }
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  return { server, origin: `http://127.0.0.1:${server.address().port}` };
+  return { server, origin: `http://127.0.0.1:${server.address().port}`, result };
+};
+
+/* ─── driving a browser ─────────────────────────────────────────────── */
+
+/**
+ * Headless Chromium. No debugging protocol: the page posts its own result to
+ * the temp server, so all this has to do is open the URL and wait.
+ */
+const runChromium = async (bin, url, result) => {
+  const profile = await fs.mkdtemp(path.join(os.tmpdir(), "sketchdex-browser-"));
+  const child = spawn(
+    bin,
+    [
+      "--headless=new",
+      "--disable-gpu",
+      "--hide-scrollbars",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-extensions",
+      "--disable-background-networking",
+      "--disable-sync",
+      "--disable-features=Translate",
+      `--user-data-dir=${profile}`,
+      "--window-size=1600,1200",
+      // Chromium refuses to start as root without this (containers, some CI)
+      ...(process.getuid?.() === 0 ? ["--no-sandbox"] : []),
+      url,
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] },
+  );
+  const handle = { child, profile };
+  liveBrowsers.add(handle);
+  let stderr = "";
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const exited = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve({ error: "render timed out" }), DEADLINE).unref(),
+  );
+  try {
+    const shot = await Promise.race([
+      result,
+      timeout,
+      exited.then((code) => ({
+        error: `the browser exited (${code}) before rendering\n${stderr.slice(-500)}`,
+      })),
+    ]);
+    return shot;
+  } finally {
+    child.kill();
+    await exited.catch(() => {});
+    liveBrowsers.delete(handle);
+    await fs.rm(profile, { recursive: true, force: true }).catch(() => {});
+  }
 };
 
 /**
+ * Electron, the way it always worked: render-main.js opens a hidden window,
+ * polls the page for its result and writes it to a file.
+ */
+const runElectron = async (bin, url) => {
+  const dir = path.join(os.tmpdir(), "sketchdex-renders");
+  await fs.mkdir(dir, { recursive: true });
+  const outFile = path.join(dir, `.result-${process.pid}-${Date.now()}.json`);
+  const child = spawn(bin, [path.join(here, "render-main.js"), url, outFile], {
+    cwd: repo,
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  const handle = { child, profile: null };
+  liveBrowsers.add(handle);
+  let stderr = "";
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  try {
+    const code = await new Promise((resolve) => child.on("close", resolve));
+    const raw = await fs.readFile(outFile, "utf8").catch(() => "");
+    if (!raw) {
+      return { error: `render process exited ${code}\n${stderr.slice(-500)}` };
+    }
+    return JSON.parse(raw);
+  } finally {
+    child.kill();
+    liveBrowsers.delete(handle);
+    await fs.rm(outFile, { force: true }).catch(() => {});
+  }
+};
+
+/* ─── the render ────────────────────────────────────────────────────── */
+
+/**
  * @param scene   the payload from agent.readScene, with `files` included
- * @param options scale, maxWidth, dark
+ * @param options scale, maxWidth, dark, region, ids, tiles, inlineLimit
  */
 export async function renderScene(
   scene,
@@ -135,22 +405,25 @@ export async function renderScene(
     ids = null,
     tiles = 1,
     inlineLimit = 150_000,
+    transparent = false,
   } = {},
 ) {
-  const running = await findRunningServer(scene.vault);
-  let temp = null;
-  let origin = running;
+  const browser = await findBrowser();
+  if (!browser) throw new Error(NO_BROWSER_MESSAGE);
+  await pruneOldOutput();
 
-  if (!origin) {
-    temp = await startTempServer(
-      JSON.stringify({
-        elements: scene.elements,
-        appState: scene.appState,
-        files: scene.files ?? {},
-      }),
-    );
-    origin = temp.origin;
-  }
+  const running = await findRunningServer(scene.vault);
+  const temp = await startTempServer({
+    serveDist: !running,
+    payload: running
+      ? null
+      : JSON.stringify({
+          elements: scene.elements,
+          appState: scene.appState,
+          files: scene.files ?? {},
+        }),
+  });
+  const origin = running ?? temp.origin;
 
   const query = new URLSearchParams({
     scale: String(scale),
@@ -159,6 +432,7 @@ export async function renderScene(
     inlineLimit: String(inlineLimit),
     tiles: String(tiles > 1 ? tiles : 1),
   });
+  if (transparent) query.set("bg", "0");
   // against a live server the page fetches the scene itself, by id
   if (running) query.set("scene", scene.id);
   if (ids?.length) query.set("only", ids.join(","));
@@ -166,31 +440,15 @@ export async function renderScene(
     const { x = 0, y = 0, width = 0, height = 0 } = region;
     query.set("region", [x, y, width, height].join(","));
   }
+  if (browser.kind === "chromium") query.set("result", `${temp.origin}/__result`);
 
-  const dir = path.join(os.tmpdir(), "sketchdex-renders");
-  await fs.mkdir(dir, { recursive: true });
-  // the child answers through a file, not stdout: see render-main.js
-  const outFile = path.join(dir, `.result-${process.pid}-${Date.now()}.json`);
-
-  const electron = (await import("electron")).default;
-  const child = spawn(
-    electron,
-    [path.join(here, "render-main.js"), `${origin}/render.html?${query}`, outFile],
-    { cwd: repo, stdio: ["ignore", "ignore", "pipe"] },
-  );
-
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk;
-  });
+  const url = `${origin}/render.html?${query}`;
 
   try {
-    const code = await new Promise((resolve) => child.on("close", resolve));
-    const raw = await fs.readFile(outFile, "utf8").catch(() => "");
-    if (!raw) {
-      throw new Error(`render process exited ${code}\n${stderr.slice(-500)}`);
-    }
-    const shot = JSON.parse(raw);
+    const shot =
+      browser.kind === "chromium"
+        ? await runChromium(browser.bin, url, temp.result)
+        : await runElectron(browser.bin, url);
     if (shot.error) throw new Error(shot.error);
 
     /**
@@ -198,8 +456,11 @@ export async function renderScene(
      * that hits the transport's message limit needs somewhere to go, and a path
      * that sometimes exists is worse than one that always does.
      */
+    const dir = RENDER_DIR;
+    await fs.mkdir(dir, { recursive: true });
     const safe = String(scene.name ?? "scene").replace(/[^A-Za-z0-9_-]+/g, "-").slice(0, 40);
-    const stamp = `${safe}-${scene.id.slice(0, 8)}`;
+    // a short random tail so two renders of one scene never share a file
+    const stamp = `${safe}-${scene.id.slice(0, 8)}-${Math.random().toString(36).slice(2, 6)}`;
     const unpack = async (image, suffix) => {
       const base64 = image.dataUrl.split(",")[1];
       const bytes = Buffer.from(base64, "base64");
@@ -233,8 +494,6 @@ export async function renderScene(
     if (!shot.dataUrl) throw new Error("render produced nothing");
     return unpack(shot, "");
   } finally {
-    child.kill();
-    temp?.server.close();
-    await fs.rm(outFile, { force: true }).catch(() => {});
+    temp.server.close();
   }
 }

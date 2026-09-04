@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.lucasr1b/sketchdex",
+  "title": "Sketchdex",
+  "description": "Lets AI agents draw hand-drawn Excalidraw diagrams: real .excalidraw files on your machine, with history, rendering and a local library app.",
+  "websiteUrl": "https://sketchdex.dev",
+  "repository": {
+    "url": "https://github.com/lucasr1b/sketchdex",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "sketchdex",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "SKETCHDEX_VAULT",
+          "description": "Folder where scenes are stored. Default: ~/Documents/sketchdex",
+          "isRequired": false,
+          "format": "filepath"
+        },
+        {
+          "name": "SKETCHDEX_BROWSER",
+          "description": "Path to a Chromium-based browser binary used for render_scene. Default: the first of Chrome, Chromium, Edge or Brave found on the machine",
+          "isRequired": false,
+          "format": "filepath"
+        }
+      ]
+    }
+  ]
+}

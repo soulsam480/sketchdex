@@ -32,7 +32,15 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..");
 const WATCHED = [path.join(repo, "server"), here];
-const RELOAD = process.env.SKETCHDEX_NO_RELOAD !== "1";
+/**
+ * Hot reload is for people editing the source. An installed package never
+ * changes underneath a session, so only a git checkout watches its files.
+ * SKETCHDEX_NO_RELOAD=1 pins a checkout's session; SKETCHDEX_RELOAD=1 forces
+ * the watcher on anywhere.
+ */
+const RELOAD =
+  process.env.SKETCHDEX_RELOAD === "1" ||
+  (process.env.SKETCHDEX_NO_RELOAD !== "1" && fs.existsSync(path.join(repo, ".git")));
 
 let child = null;
 let ready = null;
@@ -42,7 +50,18 @@ let instructions = "";
 let generation = 0;
 let nextId = 0;
 let brokenSince = null;
+let lastStderr = "";
+let shuttingDown = false;
 const pending = new Map();
+
+// an installed package cannot fix itself by waiting; a checkout can (a file
+// caught mid-save is the usual cause there)
+const MAX_LOAD_ATTEMPTS = RELOAD ? Infinity : 3;
+
+const errorResult = (text) => ({
+  isError: true,
+  content: [{ type: "text", text }],
+});
 
 const startWorker = (attempt = 0) => {
   generation += 1;
@@ -50,8 +69,13 @@ const startWorker = (attempt = 0) => {
 
   child = fork(path.join(here, "worker.js"), {
     // stdout must stay closed: this process's stdout *is* the MCP channel, and
-    // one stray console.log in the child would corrupt the protocol stream
-    stdio: ["ignore", "ignore", "inherit", "ipc"],
+    // one stray console.log in the child would corrupt the protocol stream.
+    // stderr is piped so its tail can be quoted back when the worker dies
+    stdio: ["ignore", "ignore", "pipe", "ipc"],
+  });
+  child.stderr?.on("data", (chunk) => {
+    process.stderr.write(chunk);
+    lastStderr = (lastStderr + chunk).slice(-1500);
   });
 
   // per-worker, not global: `tools` survives from the last good worker, so it
@@ -77,19 +101,29 @@ const startWorker = (attempt = 0) => {
       }
     });
 
-    child.on("exit", () => {
+    child.on("exit", (code) => {
       // a reload kills the old worker on purpose and has already replaced it
-      if (mine !== generation) return;
+      if (mine !== generation || shuttingDown) return;
+
+      // whatever was mid-flight died with the worker; say so now rather than
+      // letting each caller sit out the full timeout
+      for (const [id, settle] of pending) {
+        pending.delete(id);
+        settle(errorResult(`Sketchdex's worker exited (${code}) during this call. Retry it.`));
+      }
 
       /**
        * Dying before it was ever ready means the source does not currently
-       * load - almost always a file caught mid-save. Backing off rather than
-       * respawning immediately avoids a hot loop, and `ready` is resolved
-       * anyway so calls fail with an explanation instead of hanging forever.
+       * load - in a checkout, almost always a file caught mid-save. Backing
+       * off rather than respawning immediately avoids a hot loop, and `ready`
+       * is resolved anyway so calls fail with an explanation instead of
+       * hanging forever. An installed package gets a few tries and then a
+       * straight answer.
        */
       if (!becameReady) {
         brokenSince = brokenSince ?? Date.now();
         resolve();
+        if (attempt + 1 >= MAX_LOAD_ATTEMPTS) return;
       }
       setTimeout(
         () => startWorker(attempt + 1),
@@ -197,16 +231,13 @@ const watchSources = (server) => {
   timer.unref?.();
 };
 
-const errorResult = (text) => ({
-  isError: true,
-  content: [{ type: "text", text }],
-});
-
 const call = async (name, args) => {
   await ready;
   if (brokenSince || !child?.connected) {
     return errorResult(
-      "Sketchdex could not load its own source - most likely a file caught mid-save. It retries automatically; call again in a moment.",
+      RELOAD
+        ? "Sketchdex could not load its own source - most likely a file caught mid-save. It retries automatically; call again in a moment."
+        : `Sketchdex's worker failed to start, so this install is broken. Reinstall with \`npm i -g sketchdex\` or clear the npx cache. Last error:\n${lastStderr.trim() || "(nothing on stderr)"}`,
     );
   }
   const id = (nextId += 1);
@@ -246,5 +277,25 @@ server.setRequestHandler(CallToolRequestSchema, (request) =>
   call(request.params.name, request.params.arguments ?? {}),
 );
 
-await server.connect(new StdioServerTransport());
+const transport = new StdioServerTransport();
+
+/**
+ * Leave when the client does. The SDK's stdio transport never watches for
+ * stdin closing, and the worker's IPC handle keeps this process alive, so
+ * without this a session that ends by closing the pipe leaves two node
+ * processes behind for good.
+ */
+const shutdown = () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  child?.kill();
+  process.exit(0);
+};
+transport.onclose = shutdown;
+process.stdin.on("end", shutdown);
+process.stdin.on("close", shutdown);
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+await server.connect(transport);
 if (RELOAD) watchSources(server);

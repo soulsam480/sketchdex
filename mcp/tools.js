@@ -64,7 +64,7 @@ const SCENE = {
  * carry their own detail.
  */
 export const INSTRUCTIONS = [
-  "Sketchdex draws on Lucas's Excalidraw canvases; scenes are real .excalidraw",
+  "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw",
   "files, every write is snapshotted, and `label` is required on every write.",
   "Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse",
   "confident strokes, flat solid colour (no shading, no cross-hatch texture),",
@@ -303,7 +303,7 @@ const TOOLS = [
   {
     name: "render_scene",
     description:
-      "A PNG of the scene as it actually renders, so you can look at what you drew. Use it to check your own work - proportions, overlaps, whether the thing reads as the thing. Always written to a file as well as returned. A tall or wide page (long edge more than about twice the short one) comes back as a few tiles cut along its length, each with the scene box it shows, so a whole board is readable in one call; a `region` renders just that box, which is the way to look closely at one part. When an image is too big to travel inline you get a downscaled preview plus the file path.",
+      "A PNG of the scene as it actually renders, so you can look at what you drew. Use it to check your own work - proportions, overlaps, whether the thing reads as the thing. Always written to a file as well as returned. A tall or wide page (long edge more than about twice the short one, and too big to fit at the asked size) comes back as a few tiles cut along its length, each with the scene box it shows, so a whole board is readable in one call; a `region` renders just that box, which is the way to look closely at one part. When an image is too big to travel inline you get a downscaled preview plus the file path.",
     inputSchema: {
       type: "object",
       properties: {
@@ -330,6 +330,10 @@ const TOOLS = [
           type: "array",
           description: "Render only these elements.",
           items: { type: "string" },
+        },
+        transparent: {
+          type: "boolean",
+          description: "Leave the paper out of the PNG (alpha background). For dropping a sketch onto a slide or a page.",
         },
         tiles: {
           type: "number",
@@ -528,11 +532,19 @@ const makeHandlers = (api) => ({
         const w = Math.max(...xs) - Math.min(...xs);
         const h = Math.max(...ys) - Math.min(...ys);
         const aspect = Math.max(w, h) / Math.max(1, Math.min(w, h));
-        tiles = aspect > 1.8 ? Math.min(4, Math.ceil(aspect / 1.25)) : 1;
+        // a page that fits in one image at the asked size loses nothing by
+        // staying one image; tiling is only for what would have to shrink
+        const fits = Math.max(w, h) * (a.scale ?? 1) <= (a.maxWidth ?? 1400);
+        tiles = !fits && aspect > 1.8 ? Math.min(4, Math.ceil(aspect / 1.25)) : 1;
       }
     }
 
-    const png = await renderScene(scene, { ...a, tiles, inlineLimit: INLINE_IMAGE_LIMIT });
+    // the limit is per result, not per picture: tiles share it
+    const png = await renderScene(scene, {
+      ...a,
+      tiles,
+      inlineLimit: Math.floor(INLINE_IMAGE_LIMIT / Math.max(1, tiles)),
+    });
     if (png.tiles) {
       return {
         _images: png.tiles,
@@ -557,7 +569,7 @@ const makeHandlers = (api) => ({
 const spill = async (tool, text) => {
   const dir = path.join(os.tmpdir(), "sketchdex-renders");
   await fs.mkdir(dir, { recursive: true });
-  const file = path.join(dir, `${tool}-${text.length}.json`);
+  const file = path.join(dir, `${tool}-${text.length}-${Math.random().toString(36).slice(2, 6)}.json`);
   await fs.writeFile(file, text);
   return file;
 };
@@ -572,148 +584,145 @@ export { TOOLS };
  */
 export async function dispatch(api, name, rawArgs) {
   const handlers = makeHandlers(api);
-  {
-    const request = { params: { name, arguments: rawArgs } };
-    const handler = handlers[request.params.name];
-    if (!handler) {
-      return {
-        isError: true,
-        content: [{ type: "text", text: `unknown tool: ${request.params.name}` }],
-      };
+  const handler = handlers[name];
+  if (!handler) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: `unknown tool: ${name}` }],
+    };
+  }
+
+  /**
+   * `required` in an inputSchema is a hint the client may or may not act on,
+   * and the safety contract leans on `label` too heavily to leave to chance:
+   * an unlabelled snapshot is one the user cannot judge. Enforced here so it
+   * holds regardless of who is calling.
+   */
+  const args = rawArgs ?? {};
+  const required = TOOLS.find((t) => t.name === name)
+    ?.inputSchema?.required;
+  const missing = (required ?? []).filter(
+    (key) => args[key] === undefined || args[key] === "",
+  );
+  if (missing.length) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text:
+            `${name} is missing: ${missing.join(", ")}` +
+            (missing.includes("label")
+              ? ". `label` is what the user reads in the history sidebar when deciding whether to keep this change, so describe what you are doing, e.g. 'add the dog illustration'."
+              : ""),
+        },
+      ],
+    };
+  }
+
+  try {
+    const result = await handler(args);
+
+    if (result?._images) {
+      const { _images, ...rest } = result;
+      const content = [];
+      const tiles = [];
+      for (const [i, tile] of _images.entries()) {
+        const fits = tile.base64.length <= Math.floor(INLINE_IMAGE_LIMIT / _images.length);
+        const shown = fits ? tile.base64 : tile.preview?.base64;
+        const mime = fits ? "image/png" : (tile.preview?.mime ?? "image/jpeg");
+        const r = tile.region;
+        content.push({
+          type: "text",
+          text: `tile ${i + 1} of ${_images.length}: scene box x=${Math.round(r.x)} y=${Math.round(r.y)} width=${Math.round(r.width)} height=${Math.round(r.height)}`,
+        });
+        if (shown) content.push({ type: "image", data: shown, mimeType: mime });
+        tiles.push({
+          region: {
+            x: Math.round(r.x),
+            y: Math.round(r.y),
+            width: Math.round(r.width),
+            height: Math.round(r.height),
+          },
+          path: tile.path,
+          width: tile.width,
+          height: tile.height,
+          inlined: fits,
+          shownAt: fits ? undefined : tile.preview ? `${tile.preview.width}x${tile.preview.height}` : "not shown",
+        });
+      }
+      content.push({
+        type: "text",
+        text: JSON.stringify(
+          {
+            ...rest,
+            tiles,
+            note: "The page was cut into tiles along its long axis (pass tiles: 1 for a single image). To look closely at one part, render that `region`.",
+          },
+          null,
+          1,
+        ),
+      });
+      return { content };
     }
 
-    /**
-     * `required` in an inputSchema is a hint the client may or may not act on,
-     * and the safety contract leans on `label` too heavily to leave to chance:
-     * an unlabelled snapshot is one the user cannot judge. Enforced here so it
-     * holds regardless of who is calling.
-     */
-    const args = request.params.arguments ?? {};
-    const required = TOOLS.find((t) => t.name === request.params.name)
-      ?.inputSchema?.required;
-    const missing = (required ?? []).filter(
-      (key) => args[key] === undefined || args[key] === "",
-    );
-    if (missing.length) {
+    if (result?._image) {
+      const { _image, _preview, ...rest } = result;
+      const fits = _image.length <= INLINE_IMAGE_LIMIT;
+
+      // full render if it travels, otherwise the downscaled companion drawn
+      // in the same pass - either way there is something to actually look at
+      const shown = fits ? _image : _preview?.base64;
+      const shownMime = fits ? "image/png" : (_preview?.mime ?? "image/jpeg");
+      const note = fits
+        ? undefined
+        : _preview
+          ? `Shown at ${_preview.width}x${_preview.height}; the full ${rest.width}x${rest.height} render is the file at \`path\`. Render a smaller \`region\` for detail.`
+          : "Too large to show inline and too detailed to downscale. Read the file at `path`, or render a smaller `region`.";
+
       return {
-        isError: true,
         content: [
+          ...(shown ? [{ type: "image", data: shown, mimeType: shownMime }] : []),
           {
             type: "text",
-            text:
-              `${request.params.name} is missing: ${missing.join(", ")}` +
-              (missing.includes("label")
-                ? ". `label` is what the user reads in the history sidebar when deciding whether to keep this change, so describe what you are doing, e.g. 'add the dog illustration'."
-                : ""),
+            text: JSON.stringify({ ...rest, inlined: fits, note }, null, 1),
           },
         ],
       };
     }
 
-    try {
-      const result = await handler(args);
-
-      if (result?._images) {
-        const { _images, ...rest } = result;
-        const content = [];
-        const tiles = [];
-        for (const [i, tile] of _images.entries()) {
-          const fits = tile.base64.length <= INLINE_IMAGE_LIMIT;
-          const shown = fits ? tile.base64 : tile.preview?.base64;
-          const mime = fits ? "image/png" : (tile.preview?.mime ?? "image/jpeg");
-          const r = tile.region;
-          content.push({
-            type: "text",
-            text: `tile ${i + 1} of ${_images.length}: scene box x=${Math.round(r.x)} y=${Math.round(r.y)} width=${Math.round(r.width)} height=${Math.round(r.height)}`,
-          });
-          if (shown) content.push({ type: "image", data: shown, mimeType: mime });
-          tiles.push({
-            region: {
-              x: Math.round(r.x),
-              y: Math.round(r.y),
-              width: Math.round(r.width),
-              height: Math.round(r.height),
-            },
-            path: tile.path,
-            width: tile.width,
-            height: tile.height,
-            inlined: fits,
-            shownAt: fits ? undefined : tile.preview ? `${tile.preview.width}x${tile.preview.height}` : "not shown",
-          });
-        }
-        content.push({
-          type: "text",
-          text: JSON.stringify(
-            {
-              ...rest,
-              tiles,
-              note: "The page was cut into tiles along its long axis (pass tiles: 1 for a single image). To look closely at one part, render that `region`.",
-            },
-            null,
-            1,
-          ),
-        });
-        return { content };
-      }
-
-      if (result?._image) {
-        const { _image, _preview, ...rest } = result;
-        const fits = _image.length <= INLINE_IMAGE_LIMIT;
-
-        // full render if it travels, otherwise the downscaled companion drawn
-        // in the same pass - either way there is something to actually look at
-        const shown = fits ? _image : _preview?.base64;
-        const shownMime = fits ? "image/png" : (_preview?.mime ?? "image/jpeg");
-        const note = fits
-          ? undefined
-          : _preview
-            ? `Shown at ${_preview.width}x${_preview.height}; the full ${rest.width}x${rest.height} render is the file at \`path\`. Render a smaller \`region\` for detail.`
-            : "Too large to show inline and too detailed to downscale. Read the file at `path`, or render a smaller `region`.";
-
-        return {
-          content: [
-            ...(shown ? [{ type: "image", data: shown, mimeType: shownMime }] : []),
-            {
-              type: "text",
-              text: JSON.stringify({ ...rest, inlined: fits, note }, null, 1),
-            },
-          ],
-        };
-      }
-
-      const text = JSON.stringify(result, null, 1);
-      if (text.length > TEXT_LIMIT) {
-        /**
-         * Spilled to a file rather than truncated. A read big enough to break
-         * the transport is usually read_scene on a large scene, and the caller
-         * still needs the data - just not through this pipe.
-         */
-        const file = await spill(request.params.name, text);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  truncated: true,
-                  bytes: text.length,
-                  path: file,
-                  note: "Too large to return in one result, so it was written to this file. Read it there, or narrow the request: describe_scene for a summary, read_elements with ids/type/region for specific elements.",
-                },
-                null,
-                1,
-              ),
-            },
-          ],
-        };
-      }
-      return { content: [{ type: "text", text }] };
-    } catch (err) {
+    const text = JSON.stringify(result, null, 1);
+    if (text.length > TEXT_LIMIT) {
+      /**
+       * Spilled to a file rather than truncated. A read big enough to break
+       * the transport is usually read_scene on a large scene, and the caller
+       * still needs the data - just not through this pipe.
+       */
+      const file = await spill(name, text);
       return {
-        isError: true,
-        content: [{ type: "text", text: String(err?.message ?? err) }],
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                truncated: true,
+                bytes: text.length,
+                path: file,
+                note: "Too large to return in one result, so it was written to this file. Read it there, or narrow the request: describe_scene for a summary, read_elements with ids/type/region for specific elements.",
+              },
+              null,
+              1,
+            ),
+          },
+        ],
       };
     }
+    return { content: [{ type: "text", text }] };
+  } catch (err) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: String(err?.message ?? err) }],
+    };
   }
 }
 
@@ -721,7 +730,7 @@ export async function dispatch(api, name, rawArgs) {
 export function createSketchdexServer(api) {
   const server = new Server(
     { name: "sketchdex", version: VERSION },
-    { capabilities: { tools: { listChanged: true } } },
+    { capabilities: { tools: { listChanged: true } }, instructions: INSTRUCTIONS },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
   server.setRequestHandler(CallToolRequestSchema, (request) =>

@@ -2,10 +2,11 @@
 
 Self-contained. You need nothing else to start drawing.
 
-Sketchdex is a local Excalidraw library on this Mac. Drawings are called
-**scenes** and live as real `.excalidraw` files in a **vault** at
-`~/Documents/sketchdex`. You can read them, draw on them, and look at what you
-drew. Everything is local: no network, no account, no upload.
+Sketchdex is a local Excalidraw library on this machine. Drawings are called
+**scenes** and live as real `.excalidraw` files in a **vault** (by default
+`~/Documents/sketchdex`; `sketchdex vault` prints the real path). You can read
+them, draw on them, and look at what you drew. Everything is local: no
+network, no account, no upload.
 
 There is a safety contract, described under **History**. Read it before writing.
 
@@ -13,20 +14,19 @@ There is a safety contract, described under **History**. Read it before writing.
 
 ## Three ways in. Pick whichever you have.
 
-### 1. MCP (already registered)
+### 1. MCP
 
-Registered for Claude Code (user scope) and Codex (`~/.codex/config.toml`, which
-the ChatGPT desktop app also reads). If you have tools named `list_scenes`,
-`describe_scene`, `add_elements`, `render_scene` and so on, use them - skip to
-**The element format**. Argument names match the JSON fields below.
+If you have tools named `list_scenes`, `describe_scene`, `add_elements`,
+`render_scene` and so on, the server is registered with your client: use them
+and skip to **The element format**. Argument names match the JSON fields below.
 
-(The same tools are also served over HTTP at `POST localhost:5173/mcp`, for a
-client you can only hand a URL.)
+(The same tools are also served over HTTP at `POST localhost:5173/mcp` while
+the app is running, for a client you can only hand a URL.)
 
 ### 2. Shell (any agent that can run bash)
 
-The app's dev server exposes the identical surface at `POST /api/agent/:op` on
-**port 5173**. One endpoint, one JSON body, `scene` names the target.
+The app exposes the identical surface at `POST /api/agent/:op` on **port
+5173**. One endpoint, one JSON body, `scene` names the target.
 
 ```bash
 curl -s localhost:5173/api/agent/describe \
@@ -34,12 +34,13 @@ curl -s localhost:5173/api/agent/describe \
   -d '{"scene":"Project Centis"}'
 ```
 
-If nothing answers on 5173, start it: `cd ~/Developer/lab/sketchdex && npm run dev`.
+If nothing answers on 5173, start it: `npx sketchdex app` (or `npm run dev` in
+a checkout).
 
 ### 3. Node (no server needed)
 
 ```js
-import { createAgentApi } from "/Users/lucas/Developer/lab/sketchdex/server/agent.js";
+import { createAgentApi } from "sketchdex";
 const api = createAgentApi();
 await api.describeScene("Project Centis");
 ```
@@ -114,7 +115,7 @@ curl -s localhost:5173/api/agent/update -H 'Content-Type: application/json' -d '
 }'
 ```
 
-That element's other 25 fields are untouched, and any edit Lucas made in the
+That element's other 25 fields are untouched, and any edit the user made in the
 meantime survives. `{"ids": [...], "patch": {...}}` applies one change to many.
 
 ---
@@ -295,7 +296,7 @@ Applied only where you left the real field empty, so it never blocks you.
 - **`label`** on a shape adds a centred, container-bound text element.
 - **`ref`** names an element within one call; **`start`** / **`end`** on an arrow
   bind that end to a `ref` or id. Binding is written on both sides, so the arrow
-  follows the shape when Lucas drags it.
+  follows the shape when the user drags it.
 - **`points`** as `[[x,y],…]` is re-based so the first point is the origin.
 
 A complete, working call:
@@ -324,11 +325,11 @@ Five, not three: each `label` became its own bound text element.
 Drawing by hand has Excalidraw's undo stack. You writing to the vault does not.
 So **every write through this surface snapshots the previous state first**, and
 the snapshots show up in a sidebar in the editor with the time and your `label`.
-Lucas previews them, then keeps or reverts. Nothing expires on its own.
+The user previews them, then keeps or reverts. Nothing expires on its own.
 
 Two obligations:
 
-1. **Write a real `label`.** It is the only thing Lucas sees when deciding
+1. **Write a real `label`.** It is the only thing the user sees when deciding
    whether to keep your work. `"add the dog illustration"`, not `"update"`.
 2. **If you edit a `.excalidraw` file directly** with your own file tools, call
    `snapshot` first. Everything else snapshots itself; your own file write does
@@ -356,4 +357,4 @@ Two snapshots of a small scene cost under 1KB, so take them freely.
 - **Check size before pulling a scene.** `list` gives you the element count.
 - **You cannot see what you drew** unless you have `render_scene` (MCP only).
   Without it you are placing shapes by arithmetic with no feedback - keep the
-  geometry simple, or ask Lucas to look.
+  geometry simple, or ask the user to look.

@@ -2,7 +2,8 @@ import { FONT_FAMILY, exportToBlob, getCommonBounds } from "@excalidraw/excalidr
 import "@excalidraw/excalidraw/index.css";
 
 /**
- * Headless render target, loaded by mcp/render-main.js in a hidden window.
+ * Headless render target. mcp/render.js opens it in a headless Chromium (or,
+ * in a checkout, in Electron through mcp/render-main.js).
  *
  * The library thumbnails are SVG scaled into a small card, which is why strokes
  * in them read as heavier or lighter than they really are. This goes through
@@ -21,12 +22,21 @@ const numberParam = (key: string, fallback: number) => {
 };
 
 /**
- * The result is left on `window` for the Electron parent to read rather than
- * posted anywhere, so this page works unchanged against the normal dev server -
- * no second port just to carry an image back.
+ * Two ways out. The result is always left on `window`, which is what the
+ * Electron driver polls for. When the page was opened with `?result=<url>`
+ * (a plain headless Chromium, which has no way to read the window) it is also
+ * POSTed there. Sent as text/plain so the cross-origin post needs no preflight.
  */
 const post = (body: unknown) => {
   (window as any).__sketchdexShot = body;
+  const target = params.get("result");
+  if (target) {
+    fetch(target, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(body),
+    }).catch(() => {});
+  }
 };
 
 /**
@@ -88,7 +98,8 @@ const measure = async () => {
   // Latin, Latin-1, Latin Extended-A, plus the punctuation prose actually uses
   const chars: string[] = [];
   for (let c = 32; c < 0x250; c += 1) chars.push(String.fromCodePoint(c));
-  for (const c of "‘’“”–—…•€→←↑↓×÷°·") chars.push(c);
+  // typographic punctuation measured too, as escapes so no dash literal lives in the source
+  for (const c of "\u2018\u2019\u201c\u201d\u2013\u2014\u2026\u2022\u20ac\u2192\u2190\u2191\u2193\u00d7\u00f7\u00b0\u00b7") chars.push(c);
   const samples = [
     "the quick brown fox jumps over the lazy dog",
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
@@ -162,7 +173,8 @@ const run = async () => {
 
   const appState = {
     ...payload.appState,
-    exportBackground: true,
+    // ?bg=0 leaves the paper out, for dropping a sketch onto another surface
+    exportBackground: params.get("bg") !== "0",
     exportWithDarkMode: dark,
     viewBackgroundColor: payload.appState?.viewBackgroundColor ?? "#ffffff",
   };
@@ -218,8 +230,10 @@ const run = async () => {
     canvas.height = Math.max(1, Math.round(sh * shrink));
     const ctx = canvas.getContext("2d")!;
     // paper under the parts of the box that lie outside the exported bounds
-    ctx.fillStyle = appState.viewBackgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (appState.exportBackground) {
+      ctx.fillStyle = appState.viewBackgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     return new Promise((resolve, reject) =>
       canvas.toBlob(

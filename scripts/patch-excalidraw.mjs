@@ -15,7 +15,7 @@
  * shape and a pattern stops matching, this says so loudly rather than leaving
  * the picker half-patched.
  *
- * Runs from `npm install` (postinstall) and can be run by hand:
+ * Runs from `npm install` in a checkout (the `prepare` script) and by hand:
  *   node scripts/patch-excalidraw.mjs
  */
 import fs from "node:fs";

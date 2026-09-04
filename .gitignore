@@ -25,3 +25,9 @@ dist-ssr
 
 # Electron build output
 dist-electron
+
+# npm pack output
+*.tgz
+
+# the landing page lives outside this repo
+site/
