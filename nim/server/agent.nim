@@ -1,7 +1,7 @@
 import std/[json, math, options, random, re, sets, strutils, tables, times, unicode]
 
 import ../core/[elements, jsvalue, paper, random_ids]
-import ./[history, inspect, svg, vault]
+import ./[comments, history, inspect, svg, vault]
 
 type
   AgentError* = object of CatchableError
@@ -216,6 +216,9 @@ proc describe(element: JsonNode): JsonNode =
   if element.field("type").stringOr("") in ["freedraw", "line", "arrow"]:
     let points = element.field("points")
     result["pointCount"] = %(if points.isArr: points.len else: 0)
+  let comments = countsOf(element)
+  if comments.open + comments.resolved > 0:
+    result["comments"] = %*{"open": comments.open, "resolved": comments.resolved}
 
 proc brief(element: JsonNode): JsonNode =
   result = %*{"id": element.field("id"), "type": element.field("type")}
@@ -490,6 +493,11 @@ proc describeScene*(api: AgentApi; idOrName: string; limit = 400;
     let key = jsString(kind)
     let previous = counts.getOrDefault(key)
     counts[key] = %(if previous.isNil: 1 else: previous.getInt + 1)
+  var openComments, resolvedComments = 0
+  for element in all:
+    let totals = countsOf(element)
+    openComments += totals.open
+    resolvedComments += totals.resolved
   let background = paperOf(payload.field("appState"))
   %*{
     "id": meta["id"],
@@ -497,6 +505,7 @@ proc describeScene*(api: AgentApi; idOrName: string; limit = 400;
     "updatedAt": %isoAt(meta["updatedAt"].getBiggestInt),
     "total": all.len,
     "counts": counts,
+    "comments": %*{"open": openComments, "resolved": resolvedComments},
     "bounds": bounds(all),
     "background": %background,
     "ink": %inkFor(background),
@@ -693,6 +702,132 @@ proc deleteElements*(api: AgentApi; idOrName: string; ids: JsonNode;
           next["version"] = addJs(if isNullish(version): %1 else: version, %1)
           elements.add(next)
     Mutation(elements: elements, result: %*{"deleted": removed})
+
+proc commentError(message: string; status: int) {.noreturn.} =
+  var error = newException(AgentError, message)
+  error.status = status
+  raise error
+
+template asAgent(body: untyped): untyped =
+  try:
+    body
+  except CommentError as error:
+    var wrapped = newException(AgentError, error.msg)
+    wrapped.status = error.status
+    raise wrapped
+
+proc liveElement(payload: JsonNode; elementId: string): JsonNode =
+  for element in payload["elements"]:
+    if element.field("id").stringOr("") == elementId and
+        not jsTruthy(element.field("isDeleted")):
+      return element
+  nil
+
+proc commentTarget(payload: JsonNode; elementId: string): JsonNode =
+  if elementId.strip().len == 0:
+    commentError("elementId is required: a comment attaches to one element", 400)
+  result = liveElement(payload, elementId)
+  if result.isNil:
+    commentError("no live element \"" & elementId & "\" in this scene", 404)
+
+proc addComment*(api: AgentApi; idOrName, elementId, body, label: string;
+    authorName = "", authorKind = ""): JsonNode =
+  requireLabel(label)
+  let meta = resolve(api, idOrName)
+  let preview = readPayload(api, meta["id"].getStr)
+  discard commentTarget(preview, elementId)
+  mutate(api, idOrName, label) do (payload, _: JsonNode) -> Mutation:
+    let target = commentTarget(payload, elementId)
+    let next = asAgent(appendComment(target, body, authorName, authorKind, nowMs()))
+    let items = itemsOf(next)
+    let counts = countsOf(next)
+    Mutation(
+      elements: withUpdated(payload["elements"], %*[next]),
+      result: %*{
+        "elementId": elementId,
+        "comment": shapeComment(target, items[items.len - 1]),
+        "open": counts.open,
+        "resolved": counts.resolved
+      }
+    )
+
+proc listComments*(api: AgentApi; idOrName, elementId, status: string;
+    limit = 500): JsonNode =
+  let meta = resolve(api, idOrName)
+  let payload = readPayload(api, meta["id"].getStr)
+  let wanted = status.strip().toLowerAscii
+  if wanted.len > 0 and wanted notin ["open", "resolved"]:
+    commentError("status must be open or resolved", 400)
+  let only = elementId.strip()
+  if only.len > 0: discard commentTarget(payload, only)
+  var total, open, resolved, shown = 0
+  var truncated = false
+  var comments = newJArray()
+  for element in payload["elements"]:
+    if jsTruthy(element.field("isDeleted")): continue
+    if only.len > 0 and element.field("id").stringOr("") != only: continue
+    for item in itemsOf(element):
+      let state = item.field("status").stringOr("open")
+      inc total
+      if state == "resolved": inc resolved else: inc open
+      if wanted.len > 0 and state != wanted: continue
+      inc shown
+      if shown > limit:
+        truncated = true
+        continue
+      comments.add(shapeComment(element, item))
+  %*{
+    "sceneId": meta["id"],
+    "name": meta["name"],
+    "total": total,
+    "open": open,
+    "resolved": resolved,
+    "truncated": truncated,
+    "comments": comments
+  }
+
+proc updateComment*(api: AgentApi; idOrName, elementId, commentId, action,
+    label: string): JsonNode =
+  requireLabel(label)
+  let meta = resolve(api, idOrName)
+  let kind = asAgent(parseAction(action))
+  if commentId.strip().len == 0:
+    commentError("commentId is required", 400)
+  let preview = readPayload(api, meta["id"].getStr)
+  let before = commentTarget(preview, elementId)
+  let state = stateOf(before, commentId)
+  if state.len == 0:
+    commentError("no comment \"" & commentId & "\" on element " & elementId, 404)
+  if kind != caDelete and
+      ((kind == caResolve and state == "resolved") or
+       (kind == caReopen and state == "open")):
+    return %*{
+      "sceneId": meta["id"],
+      "name": meta["name"],
+      "elementId": elementId,
+      "commentId": commentId,
+      "status": state,
+      "changed": false
+    }
+  mutate(api, idOrName, label) do (payload, _: JsonNode) -> Mutation:
+    let target = commentTarget(payload, elementId)
+    let outcome = applyAction(target, commentId, kind, nowMs())
+    let counts = countsOf(outcome.element)
+    var result = %*{
+      "elementId": elementId,
+      "commentId": commentId,
+      "status": outcome.status,
+      "changed": outcome.changed,
+      "open": counts.open,
+      "resolved": counts.resolved
+    }
+    if kind != caDelete:
+      let item = commentOf(outcome.element, commentId)
+      if not item.isNil: result["comment"] = shapeComment(outcome.element, item)
+    Mutation(
+      elements: withUpdated(payload["elements"], %*[outcome.element]),
+      result: result
+    )
 
 proc moveElements*(api: AgentApi; idOrName: string; args: JsonNode;
     label: string): JsonNode =

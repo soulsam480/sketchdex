@@ -42,7 +42,11 @@ console.log(`build-server: output ${output}`);
 const binDir = path.join(root, "bin");
 fs.mkdirSync(binDir, { recursive: true });
 const packagedBinary = path.join(binDir, executable);
-fs.copyFileSync(path.join(root, output), packagedBinary);
-fs.chmodSync(packagedBinary, 0o755);
+// stage then rename: overwriting in place keeps the inode, and macOS caches the
+// code signature per inode, so the freshly built binary would be killed at exec
+const staged = `${packagedBinary}.new`;
+fs.copyFileSync(path.join(root, output), staged);
+fs.chmodSync(staged, 0o755);
+fs.renameSync(staged, packagedBinary);
 console.log(`build-server: bin ${binOutput}`);
 console.log(`build-server: elapsed ${elapsed}s`);

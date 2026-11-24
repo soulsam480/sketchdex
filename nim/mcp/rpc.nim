@@ -521,6 +521,20 @@ proc dispatchAgent*[T](api: T; name: string; args: JsonNode;
     args["inlineLimit"] = %int(floor(InlineImageLimit.float / divisor))
     let png = renderScene(scene, args)
     shapeRenderResult(scene, png)
+  of "add_comment":
+    api.addComment(stringArgument(args, "scene", ""),
+      stringArgument(args, "elementId", ""), stringArgument(args, "body", ""),
+      stringArgument(args, "label", ""), stringArgument(args, "author", ""),
+      stringArgument(args, "authorKind", ""))
+  of "list_comments":
+    api.listComments(stringArgument(args, "scene", ""),
+      stringArgument(args, "elementId", ""), stringArgument(args, "status", ""),
+      intArgument(args, "limit", 500))
+  of "update_comment":
+    api.updateComment(stringArgument(args, "scene", ""),
+      stringArgument(args, "elementId", ""),
+      stringArgument(args, "commentId", ""), stringArgument(args, "action", ""),
+      stringArgument(args, "label", ""))
   of "sketchdex_info":
     runtimeInfo(vaultPath)
   else:

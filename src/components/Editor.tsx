@@ -11,11 +11,14 @@ import {
 import { FontSize } from "./FontSize";
 import { Wordmark } from "./Wordmark";
 import History from "./History";
+import Comments from "./Comments";
 import {
+  addComment,
   clearHistory,
   clientId,
   discardSnapshot,
   isConflict,
+  loadComments,
   loadHistory,
   loadScene,
   onVaultEvent,
@@ -25,6 +28,8 @@ import {
   saveScene,
   saveThumb,
   slimAppState,
+  updateComment,
+  type Comment,
   type Snapshot,
 } from "../lib/store";
 import { renderThumbnail } from "../lib/thumbnail";
@@ -80,6 +85,11 @@ export default function Editor({
   const [editingName, setEditingName] = useState(false);
   const [api, setApi] = useState<any>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentTotals, setCommentTotals] = useState({ open: 0, resolved: 0 });
+  const [selected, setSelected] = useState<string[]>([]);
+  const selectionKey = useRef("");
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [historyBytes, setHistoryBytes] = useState(0);
@@ -272,6 +282,14 @@ export default function Editor({
         appState: slimAppState(appState),
         files,
       };
+      const selectedIds = Object.keys(appState.selectedElementIds ?? {}).filter(
+        (id) => appState.selectedElementIds[id],
+      );
+      const key = selectedIds.join(",");
+      if (key !== selectionKey.current) {
+        selectionKey.current = key;
+        setSelected(selectedIds);
+      }
       const version = getSceneVersion(elements as any);
 
       // load-time normalisation: adopt it as the baseline, write nothing
@@ -301,6 +319,17 @@ export default function Editor({
   useEffect(() => {
     refreshHistory();
   }, [refreshHistory]);
+
+  const refreshComments = useCallback(async () => {
+    const list = await loadComments(meta.id).catch(() => null);
+    if (!list) return;
+    setComments(list.comments);
+    setCommentTotals({ open: list.open, resolved: list.resolved });
+  }, [meta.id]);
+
+  useEffect(() => {
+    refreshComments();
+  }, [refreshComments]);
 
   useEffect(() => setLiveCount(meta.elementCount), [meta.elementCount]);
 
@@ -394,6 +423,7 @@ export default function Editor({
         if (event.id !== meta.id) return;
         if (event.type === "history") {
           refreshHistory();
+          refreshComments();
           return;
         }
         if (event.type === "removed") {
@@ -408,8 +438,9 @@ export default function Editor({
         if (event.by === clientId) return; // our own save, echoed back
         adoptFromDisk();
         refreshHistory();
+        refreshComments();
       }),
-    [meta.id, adoptFromDisk, refreshHistory, cancelPending],
+    [meta.id, adoptFromDisk, refreshHistory, refreshComments, cancelPending],
   );
 
   const preview = useCallback(
@@ -461,6 +492,48 @@ export default function Editor({
       await refreshHistory();
     },
     [meta.id, preview, refreshHistory],
+  );
+
+  const selectedElement = (() => {
+    if (!api || selected.length !== 1) return null;
+    const id = selected[0];
+    const elements: any[] = api.getSceneElements();
+    const element = elements.find((el) => el.id === id && !el.isDeleted);
+    if (!element) return null;
+    const label =
+      element.text ??
+      elements.find((el) => el.containerId === id && !el.isDeleted)?.text;
+    return {
+      id,
+      type: element.type as string,
+      text: typeof label === "string" ? label : undefined,
+    };
+  })();
+
+  /**
+   * Comment writes go through the agent surface, not the canvas save. The file
+   * comes back with a new revision, so adopt it: otherwise the next local save
+   * would be refused and have to merge for no reason.
+   */
+  const writeComment = useCallback(
+    async (body: string) => {
+      if (!selectedElement) return;
+      await addComment(meta.id, selectedElement.id, body);
+      await refreshComments();
+      await refreshHistory();
+      await adoptFromDisk();
+    },
+    [meta.id, selectedElement, refreshComments, refreshHistory, adoptFromDisk],
+  );
+
+  const changeComment = useCallback(
+    async (comment: Comment, action: "resolve" | "reopen" | "delete") => {
+      await updateComment(meta.id, comment.elementId, comment.id, action, comment.body);
+      await refreshComments();
+      await refreshHistory();
+      await adoptFromDisk();
+    },
+    [meta.id, refreshComments, refreshHistory, adoptFromDisk],
   );
 
   // save on unmount, tab hide, and window close
@@ -593,9 +666,26 @@ export default function Editor({
             ›
           </button>
           <button
+            onClick={() => setCommentsOpen((open) => !open)}
+            title="Comments on the selected element"
+            className={`hairline ml-2 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] transition-colors ${
+              commentsOpen
+                ? "bg-ink-800 text-chalk"
+                : "bg-ink-900 text-graphite hover:text-chalk"
+            }`}
+          >
+            Comments
+            {commentTotals.open > 0 && (
+              <span className="rounded bg-violet/25 px-1 font-mono text-[10px] text-chalk">
+                {commentTotals.open}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setHistoryOpen((open) => !open)}
             title="Snapshots taken before changes made outside Sketchdex"
-            className={`hairline ml-2 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] transition-colors ${
+            className={`hairline ml-1 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] transition-colors ${
               historyOpen
                 ? "bg-ink-800 text-chalk"
                 : "bg-ink-900 text-graphite hover:text-chalk"
@@ -687,6 +777,21 @@ export default function Editor({
           </Excalidraw>
         )}
       </div>
+
+        {commentsOpen && (
+          <Comments
+            element={selectedElement}
+            comments={
+              selectedElement
+                ? comments.filter((comment) => comment.elementId === selectedElement.id)
+                : []
+            }
+            sceneOpen={commentTotals.open}
+            onAdd={writeComment}
+            onUpdate={changeComment}
+            onClose={() => setCommentsOpen(false)}
+          />
+        )}
 
         {historyOpen && (
           <History

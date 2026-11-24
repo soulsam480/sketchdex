@@ -43,6 +43,14 @@ History with a count of pending agent writes, and the `Cmd K` switcher.
 Changes save on their own; there is no save button. `Cmd K` shadows
 Excalidraw's own add-link shortcut, so links go through the context menu.
 
+**Comments** (the sidebar next to History): select one element, then open
+Comments to read what is attached to it, add a note, resolve it, reopen it or
+delete it. Nothing is drawn on the canvas: the panel follows the selection, and
+the count on the Comments button is how many are open in the whole scene. Every
+write goes through the agent surface rather than a canvas save, and a canvas
+save cannot erase a comment, so a note left while the agent is moving the same
+element survives. `Cmd Enter` sends.
+
 **History** (the sidebar in the editor): every write the agent made, newest
 first, each with the label the agent gave it and a preview of the scene as
 it was before. For each one: restore that state, keep the current state and

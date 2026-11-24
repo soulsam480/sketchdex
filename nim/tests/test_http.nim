@@ -381,6 +381,79 @@ suite "sketchdex HTTP app":
     check large.status == 413
     check parseJson(large.body).hasKey("error")
 
+  test "comments attach to one element and a canvas save cannot drop them":
+    let created = jsonRequest(baseUrl, HttpPost, "/api/agent/create", %*{
+      "name": "comments", "elements": [%*{"type": "rectangle", "width": 80, "height": 40}]
+    })
+    check created.code == Http200
+    let sceneId = parseJson(created.body)["sceneId"].getStr
+    let described = jsonRequest(baseUrl, HttpPost, "/api/agent/describe", %*{"scene": sceneId})
+    let elementId = parseJson(described.body)["elements"][0]["id"].getStr
+
+    let added = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-add", %*{
+      "scene": sceneId, "elementId": elementId, "body": "Check this connector.",
+      "author": "You", "authorKind": "human", "label": "comment: check it"
+    })
+    check added.code == Http200
+    let addedBody = parseJson(added.body)
+    let commentId = addedBody["comment"]["id"].getStr
+    check commentId.startsWith("cmt_")
+    check addedBody["comment"]["author"]["name"].getStr == "You"
+    check addedBody["open"].getInt == 1
+
+    let listed = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-list", %*{"scene": sceneId})
+    check parseJson(listed.body)["comments"][0]["body"].getStr == "Check this connector."
+
+    let counted = jsonRequest(baseUrl, HttpPost, "/api/agent/describe", %*{"scene": sceneId})
+    check parseJson(counted.body)["comments"]["open"].getInt == 1
+    for element in parseJson(counted.body)["elements"]:
+      if element["id"].getStr == elementId:
+        check element["comments"]["open"].getInt == 1
+
+    # the browser holds a stale copy without the comment: save it anyway
+    let scene = request(baseUrl, HttpGet, "/api/scenes/" & sceneId)
+    var payload = parseJson(scene.body)
+    for element in payload["elements"]:
+      if element.hasKey("customData"): element.delete("customData")
+    let saved = jsonRequest(baseUrl, HttpPut, "/api/scenes/" & sceneId, %*{
+      "payload": %*{
+        "elements": payload["elements"], "appState": payload["appState"], "files": {}
+      },
+      "touch": true, "ifRev": payload["rev"]
+    })
+    check saved.code == Http200
+    let afterSave = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-list", %*{"scene": sceneId})
+    check parseJson(afterSave.body)["comments"].len == 1
+
+    let resolved = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-update", %*{
+      "scene": sceneId, "elementId": elementId, "commentId": commentId,
+      "action": "resolve", "label": "resolve it"
+    })
+    check resolved.code == Http200
+    check parseJson(resolved.body)["status"].getStr == "resolved"
+    let again = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-update", %*{
+      "scene": sceneId, "elementId": elementId, "commentId": commentId,
+      "action": "resolve", "label": "resolve it"
+    })
+    check not parseJson(again.body)["changed"].getBool
+
+    let missingLabel = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-add", %*{
+      "scene": sceneId, "elementId": elementId, "body": "no label"
+    })
+    check missingLabel.code == Http400
+    let missingElement = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-add", %*{
+      "scene": sceneId, "elementId": "nope", "body": "x", "label": "x"
+    })
+    check missingElement.code == Http404
+
+    let deleted = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-update", %*{
+      "scene": sceneId, "elementId": elementId, "commentId": commentId,
+      "action": "delete", "label": "delete it"
+    })
+    check parseJson(deleted.body)["status"].getStr == "deleted"
+    let empty = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-list", %*{"scene": sceneId})
+    check parseJson(empty.body)["total"].getInt == 0
+
   test "runs without a Node child process":
     checkNoNodeDescendant(processID(serverProcess))
 
@@ -389,7 +462,7 @@ suite "sketchdex CLI":
     let binary = configuredBinary()
     let version = runCli(binary, ["--version"])
     check version.exitCode == 0
-    check version.output == "0.2.2\n"
+    check version.output == "0.3.0\n"
     check version.stderr == ""
     let docs = runCli(binary, ["docs", "tools"])
     check docs.exitCode == 0

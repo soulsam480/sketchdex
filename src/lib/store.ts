@@ -239,6 +239,80 @@ export const clearHistory = (sceneId: string) =>
     method: "DELETE",
   });
 
+/* ---- comments ---------------------------------------------------- */
+
+/**
+ * Comments are stored on the element they are about, under
+ * `customData.sketchdex.comments`, so they are part of the scene file rather
+ * than a second document with its own revision. Every write goes through the
+ * agent surface (`/api/agent/comment-*`), never through a canvas save: a
+ * comment cannot overwrite a concurrent geometry edit, and a geometry save
+ * reconciles to the version carrying the comment.
+ */
+export type Comment = {
+  id: string;
+  body: string;
+  author: { kind: "human" | "agent"; name: string };
+  createdAt: number;
+  status: "open" | "resolved";
+  resolvedAt?: number;
+  elementId: string;
+  elementType?: string;
+  elementText?: string;
+};
+
+export type CommentList = {
+  sceneId: string;
+  name: string;
+  total: number;
+  open: number;
+  resolved: number;
+  truncated: boolean;
+  comments: Comment[];
+};
+
+const commentLabel = (verb: string, body: string) => {
+  const text = body.replace(/\s+/g, " ").trim();
+  return `${verb}: ${text.length > 48 ? `${text.slice(0, 48)}…` : text}`;
+};
+
+export const loadComments = (sceneId: string) =>
+  api<CommentList>("/agent/comment-list", {
+    method: "POST",
+    body: JSON.stringify({ scene: sceneId, limit: 500 }),
+  });
+
+export const addComment = (sceneId: string, elementId: string, body: string) =>
+  api<{ comment: Comment; open: number; resolved: number }>("/agent/comment-add", {
+    method: "POST",
+    body: JSON.stringify({
+      scene: sceneId,
+      elementId,
+      body,
+      author: "You",
+      authorKind: "human",
+      label: commentLabel("comment", body),
+    }),
+  });
+
+export const updateComment = (
+  sceneId: string,
+  elementId: string,
+  commentId: string,
+  action: "resolve" | "reopen" | "delete",
+  body: string,
+) =>
+  api<{ changed: boolean; status: string }>("/agent/comment-update", {
+    method: "POST",
+    body: JSON.stringify({
+      scene: sceneId,
+      elementId,
+      commentId,
+      action,
+      label: commentLabel(action, body),
+    }),
+  });
+
 /* ---- live changes ----------------------------------------------- */
 
 export type VaultEvent =

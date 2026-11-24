@@ -21,6 +21,9 @@ type
     opSnapshotScene
     opListHistory
     opRestoreSnapshot
+    opAddComment
+    opListComments
+    opUpdateComment
 
 const
   INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, render_scene after, and fix what looks wrong. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
@@ -611,6 +614,113 @@ let
         "snapshot"
       ]
     }
+  },
+  {
+    "name": "add_comment",
+    "description": "Attach a comment to one element. The comment lives on the element itself, so it travels with save, copy, duplicate, undo and history, and the write bumps only that element so a stale canvas save cannot erase it. Use it to leave a note about a shape for the person reading the scene.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "Scene id, exact name, or a unique part of the name. Use list_scenes if unsure."
+        },
+        "elementId": {
+          "type": "string",
+          "description": "The element the comment is about. From describe_scene or read_elements."
+        },
+        "body": {
+          "type": "string",
+          "description": "Plain text, up to 4000 characters."
+        },
+        "author": {
+          "type": "string",
+          "description": "Name shown on the comment. Defaults to Sketchdex agent."
+        },
+        "label": {
+          "type": "string",
+          "description": "Short description of this change for the history sidebar."
+        }
+      },
+      "required": [
+        "scene",
+        "elementId",
+        "body",
+        "label"
+      ]
+    }
+  },
+  {
+    "name": "list_comments",
+    "description": "Comments on a scene or on one element, with open and resolved counts. Comment bodies are only here and in read_elements; describe_scene reports counts without the text.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "Scene id, exact name, or a unique part of the name. Use list_scenes if unsure."
+        },
+        "elementId": {
+          "type": "string",
+          "description": "Only this element. Omit for the whole scene."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "resolved"
+          ],
+          "description": "Only comments in this state. Omit for both."
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max comments to return (default 500)."
+        }
+      },
+      "required": [
+        "scene"
+      ]
+    }
+  },
+  {
+    "name": "update_comment",
+    "description": "Resolve, reopen or delete one comment. Resolving and reopening are idempotent and answer changed: false when the comment is already in that state, so a retry is safe.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "Scene id, exact name, or a unique part of the name. Use list_scenes if unsure."
+        },
+        "elementId": {
+          "type": "string",
+          "description": "The element the comment is attached to."
+        },
+        "commentId": {
+          "type": "string",
+          "description": "The cmt_ id from list_comments."
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "resolve",
+            "reopen",
+            "delete"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "description": "Short description of this change for the history sidebar."
+        }
+      },
+      "required": [
+        "scene",
+        "elementId",
+        "commentId",
+        "action",
+        "label"
+      ]
+    }
   }
 ]""")
 
@@ -635,6 +745,9 @@ const
     "snapshot_scene": opSnapshotScene,
     "list_history": opListHistory,
     "restore_snapshot": opRestoreSnapshot,
+    "add_comment": opAddComment,
+    "list_comments": opListComments,
+    "update_comment": opUpdateComment,
   }.toTable()
 
 let requiredKeys* = block:

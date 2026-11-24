@@ -73,6 +73,20 @@ an exact name, or a unique part of a name.
 | `snapshot` | `{scene, label}` | stash current state, change nothing |
 | `history` | `{scene}` | snapshots held |
 | `restore` | `{scene, snapshot}` | put a snapshot back |
+| `comment-add` | `{scene, elementId, body, author?, authorKind?, label}` | attach a comment to one element |
+| `comment-list` | `{scene, elementId?, status?, limit?}` | comments, with open and resolved counts |
+| `comment-update` | `{scene, elementId, commentId, action, label}` | `action` is `resolve`, `reopen` or `delete` |
+
+**Comments** are stored on the element they are about, under
+`customData.sketchdex.comments`, so they travel with save, copy, duplicate, undo
+and history instead of living in a second document. `describe` reports
+`{open, resolved}` per element and for the scene; the bodies come from
+`comment-list`, because a summary should not carry prose. Attach one with
+`comment-add` and move it through `comment-update`; resolve and reopen are
+idempotent and answer `changed: false` when the comment is already there, so a
+retry is safe. A canvas save is never authoritative for comments: the server
+re-attaches whatever the file holds, so a tab that is a second behind cannot
+erase a comment.
 
 Rendering (`render_scene`) is MCP-only - it returns an image, which REST can't
 usefully hand back. Over shell, open the scene in the app instead.

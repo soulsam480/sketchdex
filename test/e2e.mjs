@@ -99,10 +99,10 @@ const client = new Client({ name: "sketchdex-e2e", version: "0" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();
-assert(tools.length === 19, `expected 19 tools, got ${tools.length}`);
+assert(tools.length === 22, `expected 22 tools, got ${tools.length}`);
 assert(/hand-drawn/i.test(client.getInstructions() ?? ""), "server instructions missing");
 assert(/sketchdex_docs/.test(client.getInstructions() ?? ""), "server instructions do not point at the docs");
-log("mcp connected, 19 tools");
+log("mcp connected, 22 tools");
 
 const text = (r) => r.content.find((c) => c.type === "text")?.text ?? "";
 const call = async (name, args) => {
@@ -117,7 +117,7 @@ assert(docsTool.startsWith("# Troubleshooting") && /SKETCHDEX_BROWSER/.test(docs
 const docsIndex = text(await call("sketchdex_docs", {}));
 assert(/- install:/.test(docsIndex) && /- drawing:/.test(docsIndex), "sketchdex_docs without a topic did not return the index");
 const docsTools = text(await call("sketchdex_docs", { topic: "tools" }));
-assert(/^19 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
+assert(/^22 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
 const { resources } = await client.listResources();
 assert(resources.length === 7 && resources.every((r) => r.uri.startsWith("sketchdex://docs/")), `expected 7 docs resources, got ${resources.length}`);
 const resource = await client.readResource({ uri: "sketchdex://docs/install" });
@@ -138,6 +138,25 @@ const boxId = made.elements.find((e) => e.type === "rectangle").id;
 const described = JSON.parse(text(await call("describe_scene", { scene: "E2E" })));
 assert(described.background === "#121212", `new scene paper is ${described.background}, expected #121212`);
 
+// comments ride on the element, so they survive a plain canvas save
+const comment = JSON.parse(text(await call("add_comment", {
+  scene: "E2E", elementId: boxId, body: "This label is the wrong colour.", label: "comment on the box",
+})));
+assert(comment.comment.id.startsWith("cmt_") && comment.open === 1, "add_comment did not return an open comment");
+const listed = JSON.parse(text(await call("list_comments", { scene: "E2E" })));
+assert(listed.total === 1 && listed.comments[0].elementId === boxId, "list_comments lost the comment");
+const withCounts = JSON.parse(text(await call("describe_scene", { scene: "E2E" })));
+assert(withCounts.comments.open === 1, "describe_scene did not report the open comment");
+const resolvedComment = JSON.parse(text(await call("update_comment", {
+  scene: "E2E", elementId: boxId, commentId: comment.comment.id, action: "resolve", label: "resolve the note",
+})));
+assert(resolvedComment.changed === true && resolvedComment.status === "resolved", "update_comment did not resolve");
+const reopened = JSON.parse(text(await call("update_comment", {
+  scene: "E2E", elementId: boxId, commentId: comment.comment.id, action: "reopen", label: "reopen the note",
+})));
+assert(reopened.status === "open" && reopened.changed, "update_comment did not reopen");
+log("comments attach, list, resolve and reopen");
+
 await call("update_elements", { scene: "E2E", label: "nudge the box", elements: [{ id: boxId, x: 20 }] });
 const [box] = JSON.parse(text(await call("read_elements", { scene: "E2E", ids: [boxId] }))).elements;
 assert(box.x === 20 && box.width === 220, "delta update changed more than it should");
@@ -151,7 +170,12 @@ const tip = arrow.points[arrow.points.length - 1];
 assert(arrow.x === 225 && tip[0] === 180 && tip[1] === 10, `arrow end did not follow the ellipse: x=${arrow.x} tip=${JSON.stringify(tip)}`);
 
 const history = JSON.parse(text(await call("list_history", { scene: "E2E" })));
-assert(history.entries?.length === 2 && history.entries[0].label === "shift the ellipse", "write was not snapshotted with its label");
+assert(
+  history.entries?.length >= 2 &&
+    history.entries[0].label === "shift the ellipse" &&
+    history.entries.some((e) => e.label === "comment on the box"),
+  "labelled writes were not all snapshotted",
+);
 log("create, describe, delta update, move with bound arrow, history ok");
 
 const t0 = Date.now();

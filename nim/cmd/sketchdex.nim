@@ -5,7 +5,7 @@ import ../mcp/[docs, rpc, stdio]
 import ../server/[agent, http, render, vault]
 
 const
-  Version* = "0.2.2"
+  Version* = "0.3.0"
   SourceRoot = parentDir(parentDir(currentSourcePath()))
   Usage = "sketchdex " & Version & "\n\n" &
     "  sketchdex mcp             run MCP over stdio\n" &

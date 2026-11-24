@@ -3,7 +3,7 @@ import std/[asyncdispatch, asyncnet, json, locks, monotimes, options, os, re,
 
 import ../core/[elements, jsvalue, random_ids]
 import ../mcp/rpc
-import ../server/[agent, history, vault]
+import ../server/[agent, comments, history, vault]
 import ../server/watch as filewatch
 
 const
@@ -17,7 +17,8 @@ const
   AgentOps* = [
     "list", "describe", "read", "elements", "path", "create", "add", "update",
     "delete", "move", "replace", "write", "background", "snapshot", "svg",
-    "check", "history", "restore", "discard", "clear", "build"
+    "check", "history", "restore", "discard", "clear", "build",
+    "comment-add", "comment-list", "comment-update"
   ]
 
 type
@@ -435,6 +436,8 @@ proc statusOf(error: ref CatchableError): int =
     SceneConflict(error[]).status
   elif error of AgentError:
     AgentError(error[]).status
+  elif error of CommentError:
+    CommentError(error[]).status
   elif error of JsonParsingError:
     400
   elif error of ValueError:
@@ -718,6 +721,16 @@ proc routeAgent(req: IncomingRequest, server: HttpServer) {.async.} =
     result = api.discardSnapshot(textField(body, "scene"), textField(body, "snapshot"))
   of "clear":
     result = api.clearHistory(textField(body, "scene"))
+  of "comment-add":
+    result = api.addComment(textField(body, "scene"), textField(body, "elementId"),
+      textField(body, "body"), textField(body, "label"), textField(body, "author"),
+      textField(body, "authorKind"))
+  of "comment-list":
+    result = api.listComments(textField(body, "scene"), textField(body, "elementId"),
+      textField(body, "status"), intField(body, "limit", 500))
+  of "comment-update":
+    result = api.updateComment(textField(body, "scene"), textField(body, "elementId"),
+      textField(body, "commentId"), textField(body, "action"), textField(body, "label"))
   of "build":
     let specs = body.field("specs")
     if specs.isNil:
@@ -828,6 +841,15 @@ proc routeScenes(req: IncomingRequest, server: HttpServer) {.async.} =
       touch: boolField(body, "touch", true),
       ifRev: revisionOption(body)
     )
+    let scenePath = store.scenePath(sceneId)
+    if scenePath.isSome and fileExists(scenePath.get):
+      try:
+        let current = store.read(sceneId)
+        let adopted = adoptComments(payload.field("elements"),
+          current.field("elements"))
+        if not adopted.isNil: payload["elements"] = adopted
+      except CatchableError:
+        discard
     let client = req.headers.getOrDefault("x-sketchdex-client")
     server.watcher.noteWrite(sceneId, client)
     try:

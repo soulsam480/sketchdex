@@ -87,6 +87,26 @@ proc listHistory(api: FakeAgent; idOrName: string): JsonNode =
 proc restoreSnapshot(api: FakeAgent; idOrName, snapId: string): JsonNode =
   api.record("restore_snapshot", %*{"scene": idOrName, "snapshot": snapId})
 
+proc addComment(api: FakeAgent; idOrName, elementId, body, label: string;
+    authorName = "", authorKind = ""): JsonNode =
+  api.record("add_comment", %*{
+    "scene": idOrName, "elementId": elementId, "body": body, "label": label,
+    "author": authorName, "authorKind": authorKind,
+  })
+
+proc listComments(api: FakeAgent; idOrName, elementId, status: string;
+    limit = 500): JsonNode =
+  api.record("list_comments", %*{
+    "scene": idOrName, "elementId": elementId, "status": status, "limit": limit,
+  })
+
+proc updateComment(api: FakeAgent; idOrName, elementId, commentId, action,
+    label: string): JsonNode =
+  api.record("update_comment", %*{
+    "scene": idOrName, "elementId": elementId, "commentId": commentId,
+    "action": action, "label": label,
+  })
+
 proc decode(body: string): JsonNode =
   check body.len > 0
   parseJson(body)
@@ -424,3 +444,20 @@ suite "MCP JSON-RPC":
       "scene": "board", "includeFiles": true,
     })
     check api.calls[3].args["includeFiles"].getBool
+
+    discard dispatchAgent(api, "add_comment", %*{
+      "scene": "board", "elementId": "a", "body": "look here", "label": "note",
+    })
+    check api.calls[^1].name == "add_comment"
+    check api.calls[^1].args["body"].getStr == "look here"
+
+    discard dispatchAgent(api, "list_comments", %*{"scene": "board"})
+    check api.calls[^1].name == "list_comments"
+    check api.calls[^1].args["limit"].getInt == 500
+
+    discard dispatchAgent(api, "update_comment", %*{
+      "scene": "board", "elementId": "a", "commentId": "cmt_1",
+      "action": "resolve", "label": "resolved",
+    })
+    check api.calls[^1].name == "update_comment"
+    check api.calls[^1].args["action"].getStr == "resolve"
