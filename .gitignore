@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# copied from node_modules by scripts/vendor-fonts.mjs
+public/fonts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
