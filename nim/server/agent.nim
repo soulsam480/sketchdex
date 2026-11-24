@@ -1,4 +1,5 @@
-import std/[json, math, options, random, re, sets, strutils, tables, times, unicode]
+import std/[algorithm, json, math, options, random, re, sets, strutils, tables,
+  times, unicode]
 
 import ../core/[elements, jsvalue, paper, random_ids]
 import ./[comments, history, inspect, svg, vault]
@@ -580,6 +581,162 @@ proc readElements*(api: AgentApi; idOrName: string; options: JsonNode): JsonNode
     "elements": shown
   }
 
+proc typeSet(value: JsonNode): HashSet[string] =
+  result = initHashSet[string]()
+  if not jsTruthy(value): return
+  if value.kind == JString:
+    result.incl(value.getStr)
+  elif value.isArr:
+    for item in value:
+      if item.kind == JString: result.incl(item.getStr)
+
+proc collapsed(value: string): string =
+  value.replace(re"\s+", " ").strip()
+
+proc commentBodies(element: JsonNode): seq[string] =
+  for item in itemsOf(element):
+    result.add(item.field("body").stringOr(""))
+
+proc searchElements*(api: AgentApi; idOrName, query: string;
+    args: JsonNode): JsonNode =
+  ## Find elements without reading the scene, and answer with summaries rather
+  ## than full elements. A hit on a bound label is reported as the shape the
+  ## label belongs to, because that is the thing an agent wants to edit.
+  let meta = resolve(api, idOrName)
+  let payload = readPayload(api, meta["id"].getStr)
+  remember(api, meta["id"].getStr, payload)
+  let all = live(payload["elements"])
+  let cleaned = query.strip()
+  if cleaned.len == 0:
+    let error = newException(AgentError,
+      "query is required: a word from the element's text, id or comment")
+    error.status = 400
+    raise error
+  let needle = lowerJs(cleaned)
+  let tokens = strutils.splitWhitespace(needle)
+  let wantedTypes = typeSet(args.field("type"))
+  let full = jsTruthy(args.field("full"))
+  let limitValue = if args.hasField("limit"): args["limit"] else: %20
+  let limit = sliceLimit(limitValue, high(int))
+
+  var byId = initTable[string, JsonNode]()
+  var labels = initTable[string, string]()
+  for element in all:
+    byId[element.field("id").stringOr("")] = element
+    let containerId = element.field("containerId")
+    if jsTruthy(containerId) and jsTruthy(element.field("text")):
+      labels[jsString(containerId)] = jsString(element["text"])
+
+  proc everyToken(haystack: string): bool =
+    for token in tokens:
+      if not haystack.contains(token): return false
+    true
+
+  type Hit = object
+    subject: string
+    score: int
+    match: string
+    snippet: string
+    order: int
+
+  var best = initOrderedTable[string, Hit]()
+  for index in 0 ..< all.len:
+    let element = all[index]
+    let id = element.field("id").stringOr("")
+    let lowerId = lowerJs(id)
+    # a container's label is the text of its bound child, so search "auth" by
+    # the name the person reads on the shape, not the shape's empty text field
+    let text =
+      if jsTruthy(element.field("text")): jsString(element["text"])
+      else: labels.getOrDefault(id, "")
+    let lowerText = lowerJs(text)
+    let bodies = commentBodies(element)
+    let lowerComments = lowerJs(bodies.join("\n"))
+
+    # tokens may be spread across the text, the comments and the id: "auth
+    # connector" should find a box labelled Auth that has a note about the
+    # connector. Rank by the strongest single field that matched.
+    if not everyToken(lowerText & "\n" & lowerComments & "\n" & lowerId): continue
+
+    var score = 30
+    var matched = "element"
+    var snippet = text
+    if lowerId == needle:
+      score = 100
+      matched = "id"
+      snippet = ""
+    elif lowerText == needle:
+      score = 90
+      matched = "text"
+    elif lowerText.startsWith(needle):
+      score = 70
+      matched = "text"
+    elif everyToken(lowerText):
+      score = 50
+      matched = "text"
+    elif everyToken(lowerComments):
+      score = 40
+      matched = "comment"
+      snippet = ""
+      for body in bodies:
+        if everyToken(lowerJs(body)):
+          snippet = body
+          break
+    elif everyToken(lowerId):
+      score = 20
+      matched = "id"
+      snippet = ""
+    elif snippet.len == 0 and bodies.len > 0:
+      snippet = bodies[0]
+
+    var subject = id
+    let containerId = element.field("containerId")
+    if matched == "text" and jsTruthy(containerId) and
+        byId.hasKey(jsString(containerId)):
+      subject = jsString(containerId)
+
+    let previous = best.getOrDefault(subject)
+    if previous.subject.len == 0 or score > previous.score:
+      best[subject] = Hit(subject: subject, score: score, match: matched,
+        snippet: snippet, order: index)
+
+  var hits: seq[Hit]
+  for key in best.keys:
+    let subject = byId[key]
+    if wantedTypes.len > 0 and
+        not wantedTypes.contains(subject.field("type").stringOr("")):
+      continue
+    hits.add(best[key])
+  hits.sort(proc(a, b: Hit): int =
+    if a.score != b.score: cmp(b.score, a.score) else: cmp(a.order, b.order))
+
+  let stop = min(limit, hits.len)
+  var results = newJArray()
+  for index in 0 ..< stop:
+    let hit = hits[index]
+    let subject = byId[hit.subject]
+    var entry =
+      if full: copyNode(subject)
+      else: describe(subject)
+    if not full:
+      if not jsTruthy(entry.field("text")) and labels.hasKey(hit.subject):
+        entry["text"] = %collapsed(labels[hit.subject])
+      elif jsTruthy(entry.field("text")):
+        entry["text"] = %collapsed(jsString(entry["text"]))
+      entry["match"] = %hit.match
+      let line = collapsed(hit.snippet)
+      if line.len > 0: entry["snippet"] = %utf16Slice(line, 80)
+    results.add(entry)
+
+  %*{
+    "id": meta["id"],
+    "name": meta["name"],
+    "query": cleaned,
+    "matched": hits.len,
+    "truncated": hits.len > stop,
+    "results": results
+  }
+
 proc stringValues(values: JsonNode): seq[string] =
   if values.isNil: return
   var seen = initHashSet[string]()
@@ -813,7 +970,7 @@ proc updateComment*(api: AgentApi; idOrName, elementId, commentId, action,
     let target = commentTarget(payload, elementId)
     let outcome = applyAction(target, commentId, kind, nowMs())
     let counts = countsOf(outcome.element)
-    var result = %*{
+    var output = %*{
       "elementId": elementId,
       "commentId": commentId,
       "status": outcome.status,
@@ -823,10 +980,10 @@ proc updateComment*(api: AgentApi; idOrName, elementId, commentId, action,
     }
     if kind != caDelete:
       let item = commentOf(outcome.element, commentId)
-      if not item.isNil: result["comment"] = shapeComment(outcome.element, item)
+      if not item.isNil: output["comment"] = shapeComment(outcome.element, item)
     Mutation(
       elements: withUpdated(payload["elements"], %*[outcome.element]),
-      result: result
+      result: output
     )
 
 proc moveElements*(api: AgentApi; idOrName: string; args: JsonNode;

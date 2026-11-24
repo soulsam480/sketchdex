@@ -226,7 +226,7 @@ async function runStdio(vault) {
     assert.equal(initialized.id, 1);
     assert.equal(initialized.result.serverInfo.name, "sketchdex");
     assert.equal(listed.id, 2);
-    assert.equal(listed.result.tools.length, 22);
+    assert.equal(listed.result.tools.length, 23);
     assert.equal(scenes.id, 3);
     assert.ok(Array.isArray(JSON.parse(scenes.result.content[0].text)));
 
@@ -406,17 +406,17 @@ async function main() {
   });
   assert.equal(initialized.serverInfo.name, "sketchdex");
   const tools = await rpc("tools/list");
-  assert.equal(tools.tools.length, 22);
+  assert.equal(tools.tools.length, 23);
   const scenes = JSON.parse(toolText(await toolCall("list_scenes")));
   assert.ok(scenes.some((entry) => entry.id === created.sceneId));
   const resources = await rpc("resources/list");
   assert.equal(resources.resources.length, 7);
   const docs = toolText(await toolCall("sketchdex_docs", { topic: "install" }));
   assert.match(docs, /^# Install/);
-  log("MCP HTTP initialize, 22 tools, list_scenes, 7 resources, docs");
+  log("MCP HTTP initialize, 23 tools, list_scenes, 7 resources, docs");
 
   await runStdio(vault);
-  log("MCP stdio initialize, 22 tools, list_scenes, clean EOF");
+  log("MCP stdio initialize, 23 tools, list_scenes, clean EOF");
 
   const renderCreated = await agent("create", {
     name: "Render scene",

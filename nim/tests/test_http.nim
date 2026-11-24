@@ -425,6 +425,14 @@ suite "sketchdex HTTP app":
     let afterSave = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-list", %*{"scene": sceneId})
     check parseJson(afterSave.body)["comments"].len == 1
 
+    let searched = jsonRequest(baseUrl, HttpPost, "/api/agent/search", %*{
+      "scene": sceneId, "query": "connector"
+    })
+    let hits = parseJson(searched.body)
+    check hits["matched"].getInt == 1
+    check hits["results"][0]["id"].getStr == elementId
+    check hits["results"][0]["match"].getStr == "comment"
+
     let resolved = jsonRequest(baseUrl, HttpPost, "/api/agent/comment-update", %*{
       "scene": sceneId, "elementId": elementId, "commentId": commentId,
       "action": "resolve", "label": "resolve it"
@@ -462,7 +470,7 @@ suite "sketchdex CLI":
     let binary = configuredBinary()
     let version = runCli(binary, ["--version"])
     check version.exitCode == 0
-    check version.output == "0.3.0\n"
+    check version.output == "0.4.0\n"
     check version.stderr == ""
     let docs = runCli(binary, ["docs", "tools"])
     check docs.exitCode == 0

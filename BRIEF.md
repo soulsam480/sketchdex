@@ -61,6 +61,7 @@ an exact name, or a unique part of a name.
 | `list` | `{}` | every scene: id, name, element count, updated |
 | `describe` | `{scene, type?, limit?}` | structural summary - **start here** |
 | `elements` | `{scene, ids?, type?, contains?, region?, limit?}` | full elements, filtered |
+| `search` | `{scene, query, type?, limit?, full?}` | find elements by text, id or comment |
 | `read` | `{scene, includeFiles?}` | the whole scene + its file path |
 | `path` | `{scene}` | just the file path |
 | `create` | `{name, elements?}` | new scene |
@@ -119,6 +120,12 @@ and 4MB.
 
 So: `describe` first (rounded, defaults stripped, ~10 fields per element), then
 `elements` for the few you actually need in full. `read` is a last resort.
+
+When you know what you are looking for, `search` is the cheapest way in: it
+matches element text, ids and comment bodies, every word must appear, and a hit
+on a bound label comes back as the shape the label belongs to. Results are
+ranked summaries with the snippet that matched, 20 by default. Do not read a
+scene to filter it yourself.
 
 And never read a scene, mutate the array, and `replace` it back. Send only what
 changes:

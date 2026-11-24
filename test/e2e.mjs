@@ -99,10 +99,10 @@ const client = new Client({ name: "sketchdex-e2e", version: "0" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();
-assert(tools.length === 22, `expected 22 tools, got ${tools.length}`);
+assert(tools.length === 23, `expected 23 tools, got ${tools.length}`);
 assert(/hand-drawn/i.test(client.getInstructions() ?? ""), "server instructions missing");
 assert(/sketchdex_docs/.test(client.getInstructions() ?? ""), "server instructions do not point at the docs");
-log("mcp connected, 22 tools");
+log("mcp connected, 23 tools");
 
 const text = (r) => r.content.find((c) => c.type === "text")?.text ?? "";
 const call = async (name, args) => {
@@ -117,7 +117,7 @@ assert(docsTool.startsWith("# Troubleshooting") && /SKETCHDEX_BROWSER/.test(docs
 const docsIndex = text(await call("sketchdex_docs", {}));
 assert(/- install:/.test(docsIndex) && /- drawing:/.test(docsIndex), "sketchdex_docs without a topic did not return the index");
 const docsTools = text(await call("sketchdex_docs", { topic: "tools" }));
-assert(/^22 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
+assert(/^23 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
 const { resources } = await client.listResources();
 assert(resources.length === 7 && resources.every((r) => r.uri.startsWith("sketchdex://docs/")), `expected 7 docs resources, got ${resources.length}`);
 const resource = await client.readResource({ uri: "sketchdex://docs/install" });
@@ -155,6 +155,13 @@ const reopened = JSON.parse(text(await call("update_comment", {
   scene: "E2E", elementId: boxId, commentId: comment.comment.id, action: "reopen", label: "reopen the note",
 })));
 assert(reopened.status === "open" && reopened.changed, "update_comment did not reopen");
+const found = JSON.parse(text(await call("search_elements", { scene: "E2E", query: "installed" })));
+assert(found.matched === 1 && found.results[0].type === "rectangle", "search did not find the labelled box");
+assert(found.results[0].id === boxId, "search returned the label instead of the shape it belongs to");
+const byNote = JSON.parse(text(await call("search_elements", { scene: "E2E", query: "wrong colour" })));
+assert(byNote.results[0]?.id === boxId && byNote.results[0]?.match === "comment", "search did not find the comment");
+log("search finds a label's shape and a comment's element");
+
 log("comments attach, list, resolve and reopen");
 
 await call("update_elements", { scene: "E2E", label: "nudge the box", elements: [{ id: boxId, x: 20 }] });

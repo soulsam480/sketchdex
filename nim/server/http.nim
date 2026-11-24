@@ -15,7 +15,7 @@ const
   ScanIntervalMs = 250
   EchoWindowMs = 2_500
   AgentOps* = [
-    "list", "describe", "read", "elements", "path", "create", "add", "update",
+    "list", "describe", "read", "elements", "search", "path", "create", "add", "update",
     "delete", "move", "replace", "write", "background", "snapshot", "svg",
     "check", "history", "restore", "discard", "clear", "build",
     "comment-add", "comment-list", "comment-update"
@@ -680,6 +680,8 @@ proc routeAgent(req: IncomingRequest, server: HttpServer) {.async.} =
     result = api.readScene(textField(body, "scene"), body)
   of "elements":
     result = api.readElements(textField(body, "scene"), body)
+  of "search":
+    result = api.searchElements(textField(body, "scene"), textField(body, "query"), body)
   of "path":
     result = api.scenePath(textField(body, "scene"))
   of "create":

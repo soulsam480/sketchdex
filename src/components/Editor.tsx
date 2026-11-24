@@ -12,6 +12,7 @@ import { FontSize } from "./FontSize";
 import { Wordmark } from "./Wordmark";
 import History from "./History";
 import Comments from "./Comments";
+import CommentPopover from "./CommentPopover";
 import {
   addComment,
   clearHistory,
@@ -86,10 +87,21 @@ export default function Editor({
   const [api, setApi] = useState<any>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentMode, setCommentMode] = useState(false);
+  const [popover, setPopover] = useState<{
+    element: { id: string; type: string; text?: string };
+    point: { x: number; y: number };
+  } | null>(null);
+  const [panelElement, setPanelElement] = useState<{
+    id: string;
+    type: string;
+    text?: string;
+  } | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentTotals, setCommentTotals] = useState({ open: 0, resolved: 0 });
   const [selected, setSelected] = useState<string[]>([]);
   const selectionKey = useRef("");
+  const pressAt = useRef<{ x: number; y: number } | null>(null);
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [historyBytes, setHistoryBytes] = useState(0);
@@ -289,6 +301,7 @@ export default function Editor({
       if (key !== selectionKey.current) {
         selectionKey.current = key;
         setSelected(selectedIds);
+        setPanelElement(null);
       }
       const version = getSceneVersion(elements as any);
 
@@ -494,21 +507,121 @@ export default function Editor({
     [meta.id, preview, refreshHistory],
   );
 
+  /** An element's name as the person reads it: its text, or its label's text. */
+  const elementName = useCallback(
+    (elements: any[], element: any) => {
+      const label =
+        element.text ??
+        elements.find((el) => el.containerId === element.id && !el.isDeleted)?.text;
+      return typeof label === "string" && label.trim().length > 0
+        ? label.trim()
+        : undefined;
+    },
+    [],
+  );
+
+  const describeElement = useCallback(
+    (element: any) => {
+      const elements: any[] = api?.getSceneElements?.() ?? [];
+      return {
+        id: element.id as string,
+        type: element.type as string,
+        text: elementName(elements, element),
+      };
+    },
+    [api, elementName],
+  );
+
   const selectedElement = (() => {
     if (!api || selected.length !== 1) return null;
-    const id = selected[0];
     const elements: any[] = api.getSceneElements();
-    const element = elements.find((el) => el.id === id && !el.isDeleted);
-    if (!element) return null;
-    const label =
-      element.text ??
-      elements.find((el) => el.containerId === id && !el.isDeleted)?.text;
-    return {
-      id,
-      type: element.type as string,
-      text: typeof label === "string" ? label : undefined,
-    };
+    const element = elements.find((el) => el.id === selected[0] && !el.isDeleted);
+    return element ? describeElement(element) : null;
   })();
+
+  /**
+   * Comment mode does not lean on Excalidraw's selection: a capture-phase
+   * pointer handler swallows the click, so entering the mode cannot move or
+   * edit anything, and the element under the cursor is found by geometry.
+   */
+  const elementAt = useCallback(
+    (clientX: number, clientY: number, host: HTMLElement) => {
+      if (!api) return null;
+      const app = api.getAppState();
+      const zoom = app.zoom?.value ?? 1;
+      const box = host.getBoundingClientRect();
+      const x = (clientX - box.left) / zoom - app.scrollX;
+      const y = (clientY - box.top) / zoom - app.scrollY;
+      const elements: any[] = api.getSceneElements();
+      const byId = new Map(elements.map((el) => [el.id, el]));
+      const pad = 6 / zoom;
+      for (let index = elements.length - 1; index >= 0; index -= 1) {
+        const element = elements[index];
+        if (element.isDeleted || element.type === "frame") continue;
+        const width = Math.max(element.width ?? 0, 8);
+        const height = Math.max(element.height ?? 0, 8);
+        if (
+          x < element.x - pad ||
+          x > element.x + width + pad ||
+          y < element.y - pad ||
+          y > element.y + height + pad
+        ) {
+          continue;
+        }
+        if (element.containerId) {
+          const parent = byId.get(element.containerId);
+          if (parent && !parent.isDeleted) return parent;
+          continue;
+        }
+        return element;
+      }
+      return null;
+    },
+    [api],
+  );
+
+  const insidePopover = (target: EventTarget | null) =>
+    target instanceof Element && target.closest("[data-comment-popover]") !== null;
+
+  const beginCommentPress = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!commentMode || event.button !== 0 || insidePopover(event.target)) return;
+    event.stopPropagation();
+    pressAt.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const endCommentPress = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!commentMode || !pressAt.current || insidePopover(event.target)) return;
+    event.stopPropagation();
+    const start = pressAt.current;
+    pressAt.current = null;
+    // a drag is a pan attempt, not a click on a shape
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) return;
+    const element = elementAt(event.clientX, event.clientY, event.currentTarget);
+    if (!element) {
+      setPopover(null);
+      return;
+    }
+    setPopover({
+      element: describeElement(element),
+      point: { x: event.clientX, y: event.clientY },
+    });
+  };
+
+  useEffect(() => {
+    if (!commentMode) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (popover) setPopover(null);
+      else setCommentMode(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [commentMode, popover]);
+
+  const leaveCommentMode = useCallback(() => {
+    setCommentMode(false);
+    setPopover(null);
+  }, []);
 
   /**
    * Comment writes go through the agent surface, not the canvas save. The file
@@ -516,15 +629,17 @@ export default function Editor({
    * would be refused and have to merge for no reason.
    */
   const writeComment = useCallback(
-    async (body: string) => {
-      if (!selectedElement) return;
-      await addComment(meta.id, selectedElement.id, body);
+    async (body: string, target: { id: string } | null) => {
+      if (!target) return;
+      await addComment(meta.id, target.id, body);
       await refreshComments();
       await refreshHistory();
       await adoptFromDisk();
     },
-    [meta.id, selectedElement, refreshComments, refreshHistory, adoptFromDisk],
+    [meta.id, refreshComments, refreshHistory, adoptFromDisk],
   );
+
+  const panelTarget = panelElement ?? selectedElement;
 
   const changeComment = useCallback(
     async (comment: Comment, action: "resolve" | "reopen" | "delete") => {
@@ -666,10 +781,15 @@ export default function Editor({
             ›
           </button>
           <button
-            onClick={() => setCommentsOpen((open) => !open)}
-            title="Comments on the selected element"
+            onClick={() => {
+              setCommentsOpen(false);
+              setPanelElement(null);
+              setPopover(null);
+              setCommentMode((on) => !on);
+            }}
+            title="Comment on the canvas: click a shape (Esc to leave)"
             className={`hairline ml-2 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] transition-colors ${
-              commentsOpen
+              commentMode
                 ? "bg-ink-800 text-chalk"
                 : "bg-ink-900 text-graphite hover:text-chalk"
             }`}
@@ -711,11 +831,22 @@ export default function Editor({
 
       <div className="flex min-h-0 flex-1">
       <div
-        className="excalidraw-wrapper min-w-0 flex-1"
-        onPointerDownCapture={markInteracted}
+        className={`excalidraw-wrapper relative min-w-0 flex-1 ${
+          commentMode ? "cursor-crosshair" : ""
+        }`}
+        onPointerDownCapture={(event) => {
+          markInteracted();
+          beginCommentPress(event);
+        }}
+        onPointerUpCapture={endCommentPress}
         onWheelCapture={markInteracted}
         onKeyDownCapture={markInteracted}
       >
+        {commentMode && (
+          <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-ink-800/95 px-3 py-1 text-[11px] text-graphite">
+            Click a shape to comment · Esc to leave
+          </div>
+        )}
         {(loadState === "failed" || loadState === "removed") && (
           <div className="flex h-full items-center justify-center p-6">
             <div className="hairline flex flex-col items-center gap-3 rounded-lg bg-ink-900 px-6 py-5 text-center">
@@ -778,18 +909,39 @@ export default function Editor({
         )}
       </div>
 
+        {popover && (
+          <CommentPopover
+            element={popover.element}
+            comments={comments.filter(
+              (comment) => comment.elementId === popover.element.id,
+            )}
+            point={popover.point}
+            onAdd={(body) => writeComment(body, popover.element)}
+            onUpdate={changeComment}
+            onOpenPanel={() => {
+              setPanelElement(popover.element);
+              setCommentsOpen(true);
+              leaveCommentMode();
+            }}
+            onClose={() => setPopover(null)}
+          />
+        )}
+
         {commentsOpen && (
           <Comments
-            element={selectedElement}
+            element={panelTarget}
             comments={
-              selectedElement
-                ? comments.filter((comment) => comment.elementId === selectedElement.id)
+              panelTarget
+                ? comments.filter((comment) => comment.elementId === panelTarget.id)
                 : []
             }
             sceneOpen={commentTotals.open}
-            onAdd={writeComment}
+            onAdd={(body) => writeComment(body, panelTarget)}
             onUpdate={changeComment}
-            onClose={() => setCommentsOpen(false)}
+            onClose={() => {
+              setCommentsOpen(false);
+              setPanelElement(null);
+            }}
           />
         )}
 

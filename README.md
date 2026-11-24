@@ -103,9 +103,10 @@ search, pin, rename, duplicate, import; a full Excalidraw editor for each; a
 label the agent gave it, so you can preview, keep or revert each one. The app
 notices agent writes as they happen.
 
-Comments attach to an element: select it, open **Comments**, and write a note.
-They are stored in the scene file on that element, so they survive moves,
-copies, undo and history, and a canvas save can never erase one.
+Comments are a mode: click **Comments**, click a shape, and a card at the
+cursor shows its notes and takes a new one. They are stored in the scene file on
+the element, so they survive moves, copies, undo and history, and a canvas save
+can never erase one.
 
 The same process serves the tools over HTTP at `POST /mcp` and as plain REST at
 `POST /api/agent/:op`, localhost only.
@@ -122,7 +123,7 @@ from the environment so a client config can opt in once.
 
 ## What the agent gets
 
-Twenty-two tools over stdio. The ones that matter:
+Twenty-three tools over stdio. The ones that matter:
 
 | Tool | Does |
 |---|---|
@@ -132,6 +133,7 @@ Twenty-two tools over stdio. The ones that matter:
 | `import_svg` | Write an SVG, get hand-drawn editable elements grouped as one piece. The way to draw anything that has to look like something. |
 | `render_scene` | A real canvas render as PNG, whole scene or a region, so the agent can look at its own work. |
 | `check_scene` | Layout problems found by geometry: hidden text, overlapping labels, dangling arrows, strays. |
+| `search_elements` | Find a shape by text, id or comment instead of reading the scene, ranked, with the snippet that matched. |
 | `add_comment`, `list_comments`, `update_comment` | Notes that ride on an element, so they travel with save, copy, undo and history. |
 | `snapshot_scene`, `list_history`, `restore_snapshot` | The safety net. Every write snapshots the previous state first. |
 | `sketchdex_docs` | The manual by topic, so the agent can answer setup questions and fix errors itself. |

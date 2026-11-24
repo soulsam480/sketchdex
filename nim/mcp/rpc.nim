@@ -475,6 +475,9 @@ proc dispatchAgent*[T](api: T; name: string; args: JsonNode;
       stringArgument(args, "type", ""))
   of "read_elements":
     api.readElements(stringArgument(args, "scene", ""), args)
+  of "search_elements":
+    api.searchElements(stringArgument(args, "scene", ""),
+      stringArgument(args, "query", ""), args)
   of "read_scene":
     api.readScene(stringArgument(args, "scene", ""), args)
   of "create_scene":

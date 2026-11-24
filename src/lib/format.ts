@@ -19,3 +19,6 @@ export const relativeTime = (ts: number) => {
 
 export const plural = (n: number, word: string) =>
   `${n} ${word}${n === 1 ? "" : "s"}`;
+
+export const capitalise = (value: string) =>
+  value.length > 0 ? value[0].toUpperCase() + value.slice(1) : value;

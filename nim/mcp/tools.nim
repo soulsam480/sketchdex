@@ -5,6 +5,7 @@ type
     opListScenes
     opDescribeScene
     opReadElements
+    opSearchElements
     opReadScene
     opCreateScene
     opAddElements
@@ -26,7 +27,7 @@ type
     opUpdateComment
 
 const
-  INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, render_scene after, and fix what looks wrong. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
+  INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, search_elements when you need one shape by name or note, render_scene after, and fix what looks wrong. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
   LabelRequiredNote = ". `label` is what the user reads in the history sidebar when deciding whether to keep this change, so describe what you are doing, e.g. 'add the dog illustration'."
 
 let
@@ -65,7 +66,7 @@ let
   },
   {
     "name": "read_elements",
-    "description": "Full, unabridged elements, filtered down to the ones you need. Use this rather than read_scene when editing a few things in a busy scene.",
+    "description": "Full, unabridged elements, filtered down to the ones you need. Use this when you already have the ids or a region; search_elements is the way to find them by text, id or comment.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -111,6 +112,39 @@ let
       },
       "required": [
         "scene"
+      ]
+    }
+  },
+  {
+    "name": "search_elements",
+    "description": "Find elements without reading the scene: matches element text, ids and comment bodies, case-insensitively, and every word in the query must appear. A hit on a bound label reports the shape the label belongs to. Answers compact summaries ranked by match quality, each with the snippet that matched; full: true returns the raw elements. Use this instead of describe_scene or read_elements when you know what you are looking for.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "Scene id, exact name, or a unique part of the name. Use list_scenes if unsure."
+        },
+        "query": {
+          "type": "string",
+          "description": "Words to look for in element text, ids or comments."
+        },
+        "type": {
+          "type": "string",
+          "description": "Only elements of this type."
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max results (default 20)."
+        },
+        "full": {
+          "type": "boolean",
+          "description": "Return the raw elements instead of summaries."
+        }
+      },
+      "required": [
+        "scene",
+        "query"
       ]
     }
   },
@@ -729,6 +763,7 @@ const
     "list_scenes": opListScenes,
     "describe_scene": opDescribeScene,
     "read_elements": opReadElements,
+    "search_elements": opSearchElements,
     "read_scene": opReadScene,
     "create_scene": opCreateScene,
     "add_elements": opAddElements,

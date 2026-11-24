@@ -34,6 +34,9 @@ proc readScene(api: FakeAgent; idOrName: string; options: JsonNode = nil): JsonN
 proc readElements(api: FakeAgent; idOrName: string; options: JsonNode): JsonNode =
   api.record("read_elements", options)
 
+proc searchElements(api: FakeAgent; idOrName, query: string; args: JsonNode): JsonNode =
+  api.record("search_elements", args)
+
 proc createScene(api: FakeAgent; name = "Untitled"; elements: JsonNode = nil): JsonNode =
   api.record("create_scene", %*{"name": name, "elements": elements})
 
@@ -450,6 +453,12 @@ suite "MCP JSON-RPC":
     })
     check api.calls[^1].name == "add_comment"
     check api.calls[^1].args["body"].getStr == "look here"
+
+    discard dispatchAgent(api, "search_elements", %*{
+      "scene": "board", "query": "auth service",
+    })
+    check api.calls[^1].name == "search_elements"
+    check api.calls[^1].args["query"].getStr == "auth service"
 
     discard dispatchAgent(api, "list_comments", %*{"scene": "board"})
     check api.calls[^1].name == "list_comments"
