@@ -106,6 +106,16 @@ notices agent writes as they happen.
 The same process serves the tools over HTTP at `POST /mcp` and as plain REST at
 `POST /api/agent/:op`, localhost only.
 
+To watch while an agent works, start the app beside the stdio server:
+
+```bash
+sketchdex mcp --serve
+```
+
+That serves the app on port 5173, opens it, and stops it when the session ends.
+`--no-open` keeps the browser closed, and `SKETCHDEX_MCP_SERVE=1` turns it on
+from the environment so a client config can opt in once.
+
 ## What the agent gets
 
 Nineteen tools over stdio. The ones that matter:

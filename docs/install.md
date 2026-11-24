@@ -125,6 +125,11 @@ Add these after `mcp`:
 
 - `--vault /path/to/folder` stores scenes somewhere other than
   `~/Documents/sketchdex`. An iCloud or Dropbox folder is fine.
+- `--serve` also starts the app on `--port` (default 5173) and opens it, so you
+  can watch scenes change as the agent draws. `--no-open` suppresses the
+  browser. The app stops when the session ends.
+- `SKETCHDEX_MCP_SERVE=1` turns `--serve` on, and `SKETCHDEX_NO_OPEN=1` turns
+  the browser off, so a client `env` block can set this once.
 
 Set `SKETCHDEX_VAULT`, `SKETCHDEX_BROWSER`, and `SKETCHDEX_METRICS` in the
 client's `env` block when you prefer environment configuration.

@@ -1,14 +1,15 @@
-import std/[asyncdispatch, json, os, osproc, strutils]
+import std/[asyncdispatch, json, net, os, osproc, strutils]
 
 import ../core/[metrics_data, textmetrics]
 import ../mcp/[docs, rpc, stdio]
 import ../server/[agent, http, render, vault]
 
 const
-  Version* = "0.2.1"
+  Version* = "0.2.2"
   SourceRoot = parentDir(parentDir(currentSourcePath()))
   Usage = "sketchdex " & Version & "\n\n" &
     "  sketchdex mcp             run MCP over stdio\n" &
+    "  sketchdex mcp --serve     also serve the app beside the session\n" &
     "  sketchdex app             serve the app, REST API, SSE, and MCP HTTP\n" &
     "  sketchdex vault           print the vault path\n" &
     "  sketchdex docs [topic]    print the manual\n" &
@@ -17,6 +18,7 @@ const
     "  --port <n>                app port, default 5173\n" &
     "  --assets <dir>            built app directory, default dist/\n" &
     "  --max-body <bytes>        request body cap, default 32 MiB\n" &
+    "  --no-open                 do not open the browser for mcp --serve\n" &
     "  --version                 print the version\n" &
     "  --help                    print this help\n"
 
@@ -30,7 +32,7 @@ type
     assetsDir: string
     maxBodyBytes: int
     docsTopic: string
-    help, version, updateCheck: bool
+    help, version, updateCheck, serve, noOpen: bool
 
 proc usageError(message: string) {.noreturn.} =
   stderr.writeLine("sketchdex: " & message)
@@ -86,7 +88,9 @@ proc parseOptions(arguments: seq[string]): Options =
     of "--help", "-h":
       result.help = true
     of "--no-open":
-      discard
+      result.noOpen = true
+    of "--serve":
+      result.serve = true
     of "--check":
       result.updateCheck = true
     of "--port":
@@ -132,6 +136,13 @@ proc parseOptions(arguments: seq[string]): Options =
     let configured = getEnv("SKETCHDEX_MAX_BODY")
     if configured.len > 0:
       result.maxBodyBytes = parseBodyCap(configured)
+
+  let serveEnv = getEnv("SKETCHDEX_MCP_SERVE").toLowerAscii
+  if serveEnv in ["1", "true", "yes", "on"]:
+    result.serve = true
+  let noOpenEnv = getEnv("SKETCHDEX_NO_OPEN").toLowerAscii
+  if noOpenEnv in ["1", "true", "yes", "on"]:
+    result.noOpen = true
 
   if positional.len > 0:
     case positional[0]
@@ -225,13 +236,68 @@ proc runApp(options: Options) {.async.} =
   flushFile(stdout)
   await server.serve()
 
+proc portAccepts(port: int): bool =
+  if port <= 0 or port > 65535:
+    return false
+  try:
+    let socket = newSocket()
+    defer: socket.close()
+    socket.connect("127.0.0.1", Port(port))
+    result = true
+  except CatchableError:
+    result = false
+
+proc openBrowser(url: string) =
+  let command =
+    when defined(macosx):
+      "open " & quoteShell(url)
+    elif defined(windows):
+      "explorer " & quoteShell(url)
+    else:
+      "xdg-open " & quoteShell(url)
+  discard execShellCmd(command)
+
+proc startSidecar(options: Options): Process =
+  if portAccepts(options.port):
+    stderr.writeLine("sketchdex: app already listening on http://127.0.0.1:" &
+      $options.port)
+    return nil
+  var arguments = @["app"]
+  var url = "http://127.0.0.1:5173"
+  if options.port > 0:
+    arguments.add("--port")
+    arguments.add($options.port)
+    url = "http://127.0.0.1:" & $options.port
+  if options.vaultPath.len > 0:
+    arguments.add("--vault")
+    arguments.add(options.vaultPath)
+  if options.assetsDir.len > 0:
+    arguments.add("--assets")
+    arguments.add(options.assetsDir)
+  result = startProcess(getAppFilename(), args = arguments, options = {poUsePath})
+  stderr.writeLine("sketchdex: app " & url & " beside the stdio session")
+  if not options.noOpen:
+    openBrowser(url)
+
 proc runMcp(options: Options) =
   loadMetricsOrExit()
   setRenderAssets(defaultAssetsDir())
-  let api = newAgentApi(configuredVault(options.vaultPath))
-  let dispatcher = proc(name: string, args: JsonNode): JsonNode =
-    dispatchAgent(api, name, args, api.vault.root)
-  serveStdio(dispatcher)
+  var sidecar: Process
+  if options.serve:
+    try:
+      sidecar = startSidecar(options)
+    except OSError as error:
+      stderr.writeLine("sketchdex: could not start the app: " & error.msg)
+  try:
+    let api = newAgentApi(configuredVault(options.vaultPath))
+    let dispatcher = proc(name: string, args: JsonNode): JsonNode =
+      dispatchAgent(api, name, args, api.vault.root)
+    serveStdio(dispatcher)
+  finally:
+    if sidecar != nil:
+      if sidecar.running():
+        sidecar.terminate()
+      sidecar.close()
 
 const ReleaseRepo = "soulsam480/sketchdex"
 

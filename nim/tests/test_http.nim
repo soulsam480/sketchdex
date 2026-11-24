@@ -389,7 +389,7 @@ suite "sketchdex CLI":
     let binary = configuredBinary()
     let version = runCli(binary, ["--version"])
     check version.exitCode == 0
-    check version.output == "0.2.1\n"
+    check version.output == "0.2.2\n"
     check version.stderr == ""
     let docs = runCli(binary, ["docs", "tools"])
     check docs.exitCode == 0
@@ -428,6 +428,74 @@ suite "sketchdex CLI":
     })
     check built.code == Http200
     check parseJson(built.body)["elements"].len == 2
+
+  test "mcp --serve runs the app beside the session and stops it":
+    let binary = configuredBinary()
+    let tempDir = createTempDir("sketchdex-serve-test-", "")
+    let assetsDir = tempDir / "dist"
+    createDir(assetsDir)
+    writeFile(assetsDir / "index.html", "<h1>serve assets</h1>")
+    defer: removeDir(tempDir)
+    let env = environment({
+      "SKETCHDEX_METRICS": defaultMetrics,
+      "SKETCHDEX_NO_OPEN": "1"
+    })
+    let probe = newSocket()
+    probe.bindAddr(Port(0))
+    let (_, freePort) = probe.getLocalAddr()
+    probe.close()
+    let port = int(freePort)
+    let process = startProcess(binary,
+      args = ["mcp", "--serve", "--port", $port, "--vault", tempDir / "vault",
+        "--assets", assetsDir],
+      env = env, options = {poUsePath})
+    var appUp = false
+    for attempt in 0 ..< 60:
+      try:
+        let client = newHttpClient(timeout = 500)
+        try:
+          let response = client.request("http://127.0.0.1:" & $port & "/api/vault")
+          appUp = response.code == Http200 and
+            parseJson(response.body)["vault"].getStr == absolutePath(tempDir / "vault")
+        finally:
+          client.close()
+      except CatchableError:
+        discard
+      if appUp: break
+      sleep(50)
+    check appUp
+
+    process.inputStream.writeLine($(%*{
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {},
+        "clientInfo": {"name": "nim-serve-test", "version": "1"}
+      }
+    }))
+    process.inputStream.flush()
+    check parseJson(process.outputStream.readLine())["result"]["serverInfo"]["name"].
+      getStr == "sketchdex"
+
+    process.inputStream.close()
+    check process.waitForExit(timeout = 10_000) == 0
+    process.close()
+
+    var stopped = false
+    for attempt in 0 ..< 60:
+      try:
+        let client = newHttpClient(timeout = 200)
+        try:
+          discard client.request("http://127.0.0.1:" & $port & "/api/vault")
+        finally:
+          client.close()
+      except CatchableError:
+        stopped = true
+        break
+      sleep(50)
+    check stopped
 
   test "runs MCP initialize over stdio":
     let binary = configuredBinary()
