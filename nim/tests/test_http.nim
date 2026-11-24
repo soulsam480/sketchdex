@@ -200,6 +200,35 @@ suite "sketchdex HTTP app":
       extraHeaders = [("Origin", "http://127.0.0.1:1234")])
     check localOrigin.code == Http200
 
+  test "reads and replaces the vault library with a revision guard":
+    let initial = request(baseUrl, HttpGet, "/api/library")
+    check initial.code == Http200
+    let initialBody = parseJson(initial.body)
+    check initialBody["rev"].kind == JNull
+    check initialBody["items"].len == 0
+
+    let item = %*{
+      "id": "lib-item-1",
+      "name": "Server",
+      "elements": [%*{"type": "rectangle", "width": 40, "height": 20}]
+    }
+    let written = jsonRequest(baseUrl, HttpPut, "/api/library", %*{"items": [item]})
+    check written.code == Http200
+    let rev = parseJson(written.body)["rev"].getStr
+    check rev.len > 0
+
+    let after = request(baseUrl, HttpGet, "/api/library")
+    check after.code == Http200
+    let afterBody = parseJson(after.body)
+    check afterBody["rev"].getStr == rev
+    check afterBody["items"].len == 1
+    check afterBody["items"][0]["id"].getStr == "lib-item-1"
+
+    let stale = jsonRequest(baseUrl, HttpPut, "/api/library", %*{
+      "items": [item], "ifRev": "stale"
+    })
+    checkJsonError(stale, 409)
+
   test "creates reads updates patches duplicates imports and deletes scenes":
     let createdResponse = jsonRequest(baseUrl, HttpPost, "/api/scenes", %*{"name": "HTTP scene"})
     check createdResponse.code == Http200
@@ -470,7 +499,7 @@ suite "sketchdex CLI":
     let binary = configuredBinary()
     let version = runCli(binary, ["--version"])
     check version.exitCode == 0
-    check version.output == "0.4.0\n"
+    check version.output == "0.5.0\n"
     check version.stderr == ""
     let docs = runCli(binary, ["docs", "tools"])
     check docs.exitCode == 0

@@ -87,6 +87,15 @@ proc checkScene(api: FakeAgent; idOrName: string): JsonNode =
 proc listHistory(api: FakeAgent; idOrName: string): JsonNode =
   api.record("list_history", %*{"scene": idOrName})
 
+proc browseLibraries(api: FakeAgent; query: string; args: JsonNode): JsonNode =
+  api.record("browse_libraries", args)
+
+proc installLibrary(api: FakeAgent; refOrUrl: string): JsonNode =
+  api.record("install_library", %*{"library": refOrUrl})
+
+proc listLibrary(api: FakeAgent): JsonNode =
+  api.record("list_library", newJObject())
+
 proc restoreSnapshot(api: FakeAgent; idOrName, snapId: string): JsonNode =
   api.record("restore_snapshot", %*{"scene": idOrName, "snapshot": snapId})
 

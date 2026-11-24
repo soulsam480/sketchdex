@@ -2,7 +2,7 @@ import std/[algorithm, json, math, options, random, re, sets, strutils, tables,
   times, unicode]
 
 import ../core/[elements, jsvalue, paper, random_ids]
-import ./[comments, history, inspect, svg, vault]
+import ./[comments, history, inspect, library, svg, vault]
 
 type
   AgentError* = object of CatchableError
@@ -25,6 +25,7 @@ type
   AgentApi* = ref object
     vault*: Vault
     history*: History
+    library*: LibraryStore
     lastKnown: OrderedTable[string, LastKnownState]
     sceneCache: OrderedTable[string, CachedScene]
     beforeSave*: BeforeSaveHook
@@ -41,6 +42,7 @@ proc newAgentApi*(vaultPath = ""): AgentApi =
   AgentApi(
     vault: vault,
     history: newHistory(vault),
+    library: newLibraryStore(vault),
     lastKnown: initOrderedTable[string, LastKnownState](),
     sceneCache: initOrderedTable[string, CachedScene]()
   )
@@ -1209,3 +1211,41 @@ proc discardSnapshot*(api: AgentApi; idOrName, snapId: string): JsonNode =
 proc clearHistory*(api: AgentApi; idOrName: string): JsonNode =
   let meta = resolve(api, idOrName)
   %*{"entries": api.history.clear(meta["id"].getStr)}
+
+proc listLibrary*(api: AgentApi): JsonNode =
+  let items = api.library.readItems()
+  var shown = newJArray()
+  for item in items:
+    let elements = item.field("elements")
+    var entry = %*{
+      "id": item.field("id").stringOr(""),
+      "elements": if elements.isArr: elements.len else: 0
+    }
+    let name = item.field("name")
+    if not name.isNil and name.kind == JString: entry["name"] = name
+    shown.add(entry)
+  let current = api.library.rev
+  %*{
+    "rev": if current.isSome: %current.get else: newJNull(),
+    "total": items.len,
+    "items": shown
+  }
+
+proc browseLibraries*(api: AgentApi; query: string; args: JsonNode): JsonNode =
+  let catalog = loadCatalog()
+  let limit = args.field("limit").intOr(20)
+  %*{"total": catalog.len, "results": browseCatalog(catalog, query, limit)}
+
+proc installLibrary*(api: AgentApi; refOrUrl: string): JsonNode =
+  let wanted = refOrUrl.strip
+  if wanted.len == 0:
+    let error = newException(library.LibraryError,
+      "library is required: a catalog id or a .excalidrawlib URL")
+    error.status = 400
+    raise error
+  # an id needs the catalog to find its URL; a URL does not, and should still
+  # install when the catalog is unreachable
+  let catalog =
+    if wanted.startsWith("http://") or wanted.startsWith("https://"): newJArray()
+    else: loadCatalog()
+  installFrom(api.library, catalog, wanted)

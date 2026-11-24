@@ -99,10 +99,10 @@ const client = new Client({ name: "sketchdex-e2e", version: "0" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();
-assert(tools.length === 23, `expected 23 tools, got ${tools.length}`);
+assert(tools.length === 26, `expected 26 tools, got ${tools.length}`);
 assert(/hand-drawn/i.test(client.getInstructions() ?? ""), "server instructions missing");
 assert(/sketchdex_docs/.test(client.getInstructions() ?? ""), "server instructions do not point at the docs");
-log("mcp connected, 23 tools");
+log("mcp connected, 26 tools");
 
 const text = (r) => r.content.find((c) => c.type === "text")?.text ?? "";
 const call = async (name, args) => {
@@ -117,7 +117,7 @@ assert(docsTool.startsWith("# Troubleshooting") && /SKETCHDEX_BROWSER/.test(docs
 const docsIndex = text(await call("sketchdex_docs", {}));
 assert(/- install:/.test(docsIndex) && /- drawing:/.test(docsIndex), "sketchdex_docs without a topic did not return the index");
 const docsTools = text(await call("sketchdex_docs", { topic: "tools" }));
-assert(/^23 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
+assert(/^26 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
 const { resources } = await client.listResources();
 assert(resources.length === 7 && resources.every((r) => r.uri.startsWith("sketchdex://docs/")), `expected 7 docs resources, got ${resources.length}`);
 const resource = await client.readResource({ uri: "sketchdex://docs/install" });
@@ -161,6 +161,41 @@ assert(found.results[0].id === boxId, "search returned the label instead of the 
 const byNote = JSON.parse(text(await call("search_elements", { scene: "E2E", query: "wrong colour" })));
 assert(byNote.results[0]?.id === boxId && byNote.results[0]?.match === "comment", "search did not find the comment");
 log("search finds a label's shape and a comment's element");
+
+// a library install is a vault write, not browser state, and installing twice adds nothing
+const libraryElement = {
+  type: "rectangle", version: 1, versionNonce: 1, isDeleted: false,
+  id: "e2e-library-rect", fillStyle: "solid", strokeWidth: 2, strokeStyle: "solid",
+  roughness: 1, opacity: 100, angle: 0, x: 0, y: 0, strokeColor: "#e8e6e3",
+  backgroundColor: "#2b6b3a", width: 120, height: 60, seed: 1, groupIds: [],
+  frameId: null, roundness: { type: 3 }, boundElements: [], updated: 1764000000000,
+  link: null, locked: false,
+};
+const fixture = await new Promise((resolve) => {
+  const fixtureServer = http.createServer((_req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({
+      type: "excalidrawlib", version: 1, source: "e2e", library: [[libraryElement]],
+    }));
+  });
+  fixtureServer.listen(0, "127.0.0.1", () =>
+    resolve({ fixtureServer, url: `http://127.0.0.1:${fixtureServer.address().port}/icons.excalidrawlib` }),
+  );
+});
+const firstInstall = JSON.parse(text(await call("install_library", { library: fixture.url })));
+assert(firstInstall.added === 1 && firstInstall.total === 1, `install_library added ${firstInstall.added} of ${firstInstall.total}`);
+const again = JSON.parse(text(await call("install_library", { library: fixture.url })));
+assert(again.added === 0 && again.skipped === 1, "a second install duplicated the items");
+const held = JSON.parse(text(await call("list_library", {})));
+assert(held.total === 1 && held.items[0].elements === 1, "list_library did not report the installed item");
+const stored = JSON.parse(fs.readFileSync(path.join(vault, "library.excalidrawlib"), "utf8"));
+assert(
+  stored.libraryItems[0].elements[0].id === libraryElement.id,
+  "the installed item did not keep the source element",
+);
+assert(fs.existsSync(path.join(vault, "library.excalidrawlib")), "the library was not written into the vault");
+fixture.fixtureServer.close();
+log("library install lands in the vault and is idempotent");
 
 log("comments attach, list, resolve and reopen");
 

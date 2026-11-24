@@ -25,9 +25,12 @@ type
     opAddComment
     opListComments
     opUpdateComment
+    opBrowseLibraries
+    opInstallLibrary
+    opListLibrary
 
 const
-  INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, search_elements when you need one shape by name or note, render_scene after, and fix what looks wrong. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
+  INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, search_elements when you need one shape by name or note, browse_libraries when the person asks for an icon set or a symbol you would otherwise draw by hand, render_scene after, and fix what looks wrong. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
   LabelRequiredNote = ". `label` is what the user reads in the history sidebar when deciding whether to keep this change, so describe what you are doing, e.g. 'add the dog illustration'."
 
 let
@@ -35,6 +38,47 @@ let
   {
     "name": "list_scenes",
     "description": "Every scene in the vault with its id, name, element count and last-edited time. Start here.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "browse_libraries",
+    "description": "Search the official Excalidraw library catalog by name, description or author. Returns ids to pass to install_library. Use this instead of drawing an icon set by hand.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Words from the library name, description or author. Empty lists the newest."
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max results (default 20)."
+        }
+      }
+    }
+  },
+  {
+    "name": "install_library",
+    "description": "Install a library into the vault so its items appear in the app's library panel. Pass an id from browse_libraries, or a direct .excalidrawlib URL. Installing the same library twice adds nothing.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "library": {
+          "type": "string",
+          "description": "A catalog id from browse_libraries, or an https URL ending in .excalidrawlib."
+        }
+      },
+      "required": [
+        "library"
+      ]
+    }
+  },
+  {
+    "name": "list_library",
+    "description": "What is installed in the vault's library: item ids, names and element counts.",
     "inputSchema": {
       "type": "object",
       "properties": {}
@@ -783,6 +827,9 @@ const
     "add_comment": opAddComment,
     "list_comments": opListComments,
     "update_comment": opUpdateComment,
+    "browse_libraries": opBrowseLibraries,
+    "install_library": opInstallLibrary,
+    "list_library": opListLibrary,
   }.toTable()
 
 let requiredKeys* = block:

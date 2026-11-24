@@ -469,6 +469,12 @@ proc dispatchAgent*[T](api: T; name: string; args: JsonNode;
   case name
   of "list_scenes":
     api.listScenes()
+  of "browse_libraries":
+    api.browseLibraries(stringArgument(args, "query", ""), args)
+  of "install_library":
+    api.installLibrary(stringArgument(args, "library", ""))
+  of "list_library":
+    api.listLibrary()
   of "describe_scene":
     let scene = stringArgument(args, "scene", "")
     api.describeScene(scene, intArgument(args, "limit", 400),

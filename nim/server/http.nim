@@ -3,7 +3,7 @@ import std/[asyncdispatch, asyncnet, json, locks, monotimes, options, os, re,
 
 import ../core/[elements, jsvalue, random_ids]
 import ../mcp/rpc
-import ../server/[agent, comments, history, vault]
+import ../server/[agent, comments, history, library, vault]
 import ../server/watch as filewatch
 
 const
@@ -18,7 +18,8 @@ const
     "list", "describe", "read", "elements", "search", "path", "create", "add", "update",
     "delete", "move", "replace", "write", "background", "snapshot", "svg",
     "check", "history", "restore", "discard", "clear", "build",
-    "comment-add", "comment-list", "comment-update"
+    "comment-add", "comment-list", "comment-update",
+    "library-browse", "library-install", "library-list"
   ]
 
 type
@@ -438,6 +439,8 @@ proc statusOf(error: ref CatchableError): int =
     AgentError(error[]).status
   elif error of CommentError:
     CommentError(error[]).status
+  elif error of library.LibraryError:
+    library.LibraryError(error[]).status
   elif error of JsonParsingError:
     400
   elif error of ValueError:
@@ -525,6 +528,9 @@ proc noteWrite*(watcher: Watcher; sceneId, by: string;
   )
 
 proc announce(watcher: Watcher; change: filewatch.WatchChange) =
+  if change.kind == filewatch.changeLibrary:
+    watcher.push(%*{"type": "library"})
+    return
   let sceneId = change.sceneId
   if change.kind == filewatch.changeRemoved:
     watcher.recent.del(sceneId)
@@ -733,6 +739,12 @@ proc routeAgent(req: IncomingRequest, server: HttpServer) {.async.} =
   of "comment-update":
     result = api.updateComment(textField(body, "scene"), textField(body, "elementId"),
       textField(body, "commentId"), textField(body, "action"), textField(body, "label"))
+  of "library-browse":
+    result = api.browseLibraries(textField(body, "query"), body)
+  of "library-install":
+    result = api.installLibrary(textField(body, "library"))
+  of "library-list":
+    result = api.listLibrary()
   of "build":
     let specs = body.field("specs")
     if specs.isNil:
@@ -898,6 +910,27 @@ proc routeApi(req: IncomingRequest, server: HttpServer) {.async.} =
     await serveSse(req, server.watcher)
   of "agent":
     await routeAgent(req, server)
+  of "library":
+    if req.parts.len != 1: notFound()
+    let store = server.api.library
+    if req.reqMethod == hmGet:
+      let rev = store.rev
+      await sendJson(req.client, 200, %*{
+        "rev": if rev.isSome: %rev.get else: newJNull(),
+        "items": store.readItems()
+      })
+      return
+    if req.reqMethod == hmPut:
+      let body = objectBody(req)
+      let items = body.field("items")
+      let stored = store.replace(items, revisionOption(body))
+      let rev = store.rev
+      await sendJson(req.client, 200, %*{
+        "rev": if rev.isSome: %rev.get else: newJNull(),
+        "items": stored
+      })
+      return
+    methodNotAllowed("GET", "PUT")
   of "scenes":
     await routeScenes(req, server)
   else:

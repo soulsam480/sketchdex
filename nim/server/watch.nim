@@ -1,11 +1,12 @@
 import std/[atomics, locks, monotimes, options, os, sets, tables, times]
 
-import ./vault
+import ./[library, vault]
 
 type
   WatchChangeKind* = enum
     changeScene
     changeRemoved
+    changeLibrary
 
   WatchChange* = object
     kind*: WatchChangeKind
@@ -16,6 +17,7 @@ type
 
   WatcherState = ref object
     scenesDir: string
+    libraryPath: string
     callback: WatchCallback
     recent: Table[string, string]
     mutex: Lock
@@ -44,6 +46,7 @@ type
 proc newWatcher*(vault: Vault; callback: WatchCallback): Watcher =
   Watcher(state: WatcherState(
     scenesDir: vault.scenesDir,
+    libraryPath: vault.root / LibraryFileName,
     callback: callback,
     recent: initTable[string, string]()
   ))
@@ -120,6 +123,8 @@ proc watchLoop(state: WatcherState) {.thread, gcsafe.} =
   var pending = initTable[string, PendingChange]()
   var nextScan = getMonoTime()
   var initialized = false
+  var libraryRev = none(string)
+  var librarySeen = false
 
   while not state.stopped.load(moRelaxed):
     let now = getMonoTime()
@@ -130,6 +135,17 @@ proc watchLoop(state: WatcherState) {.thread, gcsafe.} =
       except Exception:
         discard
       nextScan = getMonoTime() + PollInterval
+      let current = revisionForPath(state.libraryPath)
+      if not librarySeen:
+        librarySeen = true
+        libraryRev = current
+      elif libraryRev != current:
+        libraryRev = current
+        try:
+          state.callback(WatchChange(kind: changeLibrary, sceneId: "",
+            rev: if current.isSome: current.get else: ""))
+        except Exception:
+          discard
 
     let refreshAt = getMonoTime()
     if pending.len > 0:
