@@ -146,16 +146,6 @@ paper and ink rules, and the things that will bite.
 └── trash/<stamp>-<id>.excalidraw
 ```
 
-## Node API
-
-```js
-import { createAgentApi } from "sketchdex";
-const api = createAgentApi(); // or createAgentApi("/path/to/vault")
-await api.describeScene("Brain Dump");
-```
-
-The JavaScript implementation remains the oracle for differential tests. The npm CLI and MCP server run Nim.
-
 ## Development
 
 ```bash

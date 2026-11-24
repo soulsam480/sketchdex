@@ -30,17 +30,9 @@
   "bin": {
     "sketchdex": "bin/sketchdex"
   },
-  "main": "server/agent.js",
-  "exports": {
-    ".": "./server/agent.js",
-    "./package.json": "./package.json"
-  },
   "files": [
     "bin/",
-    "mcp/",
-    "server/",
     "dist/",
-    "nim/tests/fixtures/",
     "BRIEF.md",
     "docs/",
     "README.md",
