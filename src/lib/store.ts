@@ -321,29 +321,81 @@ export type VaultEvent =
   /** The scene file is gone from the vault (deleted or moved away). */
   | { type: "removed"; id: string; at: number };
 
+type VaultMessage = { kind: "event"; event: VaultEvent };
+
+const vaultListeners = new Set<(event: VaultEvent) => void>();
+let vaultHubStarted = false;
+
+const deliverVaultEvent = (event: VaultEvent) => {
+  for (const listener of vaultListeners) listener(event);
+};
+
+const parseVaultEvent = (data: string) => {
+  try {
+    return JSON.parse(data) as VaultEvent;
+  } catch {
+    // a malformed frame is not worth taking the stream down for
+    return null;
+  }
+};
+
+const openVaultSource = (onEvent?: (event: VaultEvent) => void) => {
+  let source: EventSource;
+  try {
+    source = new EventSource("/api/events");
+  } catch {
+    return null;
+  }
+  source.addEventListener("message", (message: MessageEvent) => {
+    const event = parseVaultEvent(message.data);
+    if (!event) return;
+    deliverVaultEvent(event);
+    onEvent?.(event);
+  });
+  return source;
+};
+
+const startVaultHub = () => {
+  if (vaultHubStarted) return;
+  vaultHubStarted = true;
+
+  const canFanOut =
+    typeof BroadcastChannel !== "undefined" &&
+    typeof navigator !== "undefined" &&
+    typeof navigator.locks?.request === "function";
+
+  if (!canFanOut) {
+    openVaultSource();
+    return;
+  }
+
+  const channel = new BroadcastChannel("sketchdex:vault-events");
+  channel.onmessage = (message: MessageEvent<VaultMessage>) => {
+    const data = message.data;
+    if (data?.kind === "event") deliverVaultEvent(data.event);
+  };
+
+  navigator.locks
+    .request("sketchdex:vault-events", async () => {
+      const source = openVaultSource((event) => {
+        channel.postMessage({ kind: "event", event });
+      });
+      if (!source) return;
+      await new Promise<never>(() => {});
+    })
+    .catch(() => {});
+};
+
 /**
  * Changes made outside this tab. An agent writing to the vault does not go
  * through the app at all, so without this the editor would hold a stale scene
  * in memory and overwrite the agent's work on its next save.
  */
 export const onVaultEvent = (listener: (event: VaultEvent) => void) => {
-  let source: EventSource | null = null;
-  try {
-    source = new EventSource("/api/events");
-  } catch {
-    return () => {};
-  }
-  const handle = (event: MessageEvent) => {
-    try {
-      listener(JSON.parse(event.data));
-    } catch {
-      // a malformed frame is not worth taking the stream down for
-    }
-  };
-  source.addEventListener("message", handle);
+  vaultListeners.add(listener);
+  startVaultHub();
   return () => {
-    source?.removeEventListener("message", handle);
-    source?.close();
+    vaultListeners.delete(listener);
   };
 };
 
