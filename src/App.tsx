@@ -5,6 +5,7 @@ import Switcher from "./components/Switcher";
 import NewScene from "./components/NewScene";
 import {
   createScene,
+  installLibrary,
   loadIndex,
   onStorageStatus,
   onVaultEvent,
@@ -27,6 +28,8 @@ export default function App() {
   /** What the New scene modal opens with; the switcher hands its query over. */
   const [newName, setNewName] = useState("");
   const [vaultDown, setVaultDown] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const installStarted = useRef(false);
 
   const refresh = useCallback(async () => {
     const list = await loadIndex().catch(() => scenesRef.current);
@@ -74,6 +77,42 @@ export default function App() {
     setOpenId(id);
     setSwitcherOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (installStarted.current) return;
+    installStarted.current = true;
+    const query = new URLSearchParams(window.location.search);
+    const library =
+      new URLSearchParams(window.location.hash.slice(1)).get("addLibrary") ??
+      query.get("addLibrary");
+    if (!library) return;
+    const scene = query.get("scene");
+    window.history.replaceState(
+      null,
+      "",
+      scene ? `#/s/${scene}` : window.location.pathname,
+    );
+    setNotice("Installing library...");
+    installLibrary(library)
+      .then((result) => {
+        setNotice(
+          result.added === 0
+            ? `Already installed from ${result.name}`
+            : `Added ${result.added} items from ${result.name}`,
+        );
+        if (scene) open(scene);
+      })
+      .catch((err) => {
+        const body = (err as { body?: { error?: string } })?.body;
+        setNotice(body?.error ?? (err instanceof Error ? err.message : String(err)));
+      });
+  }, [open]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const createNamed = useCallback(
     async (name: string) => {
@@ -213,6 +252,12 @@ export default function App() {
             Vault unreachable. Edits are held and retried, not saved. Check that
             the sketchdex server is running.
           </div>
+        </div>
+      )}
+
+      {notice && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-ink-800/95 px-3 py-1 text-[11px] text-graphite">
+          {notice}
         </div>
       )}
 

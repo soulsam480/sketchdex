@@ -313,11 +313,48 @@ export const updateComment = (
     }),
   });
 
+/* ---- library ----------------------------------------------------- */
+
+export type LibraryItem = {
+  id: string;
+  status: string;
+  created: number;
+  name?: string;
+  elements: readonly any[];
+};
+
+export type LibraryPayload = {
+  rev: string | null;
+  items: LibraryItem[];
+};
+
+export const loadLibrary = () =>
+  api<LibraryPayload>("/library").catch(() => null);
+
+export const saveLibrary = (items: readonly LibraryItem[], ifRev: string | null) =>
+  api<LibraryPayload>("/library", {
+    method: "PUT",
+    body: JSON.stringify({ items, ifRev: ifRev ?? undefined }),
+  });
+
+export const installLibrary = (library: string) =>
+  api<{
+    name: string;
+    url: string;
+    added: number;
+    skipped: number;
+    total: number;
+  }>("/agent/library-install", {
+    method: "POST",
+    body: JSON.stringify({ library }),
+  });
+
 /* ---- live changes ----------------------------------------------- */
 
 export type VaultEvent =
   | { type: "scene"; id: string; by: string; at: number }
   | { type: "history"; id: string }
+  | { type: "library" }
   /** The scene file is gone from the vault (deleted or moved away). */
   | { type: "removed"; id: string; at: number };
 
@@ -377,11 +414,44 @@ const startVaultHub = () => {
 
   navigator.locks
     .request("sketchdex:vault-events", async () => {
-      const source = openVaultSource((event) => {
-        channel.postMessage({ kind: "event", event });
+      let source: EventSource | null = null;
+      let connectingSince = 0;
+
+      const connect = () => {
+        source = openVaultSource((event) => {
+          channel.postMessage({ kind: "event", event });
+        });
+        connectingSince = source ? Date.now() : 0;
+        if (source) {
+          source.onopen = () => {
+            connectingSince = 0;
+          };
+        }
+      };
+
+      /**
+       * The lock outlives the stream: a server restart can leave the leader
+       * holding it with a dead EventSource, and every other tab waits forever.
+       * Watch the stream and replace it, instead of assuming it heals.
+       */
+      connect();
+      const watchdog = window.setInterval(() => {
+        if (!source || source.readyState === EventSource.CLOSED) {
+          connect();
+          return;
+        }
+        if (source.readyState === EventSource.CONNECTING && connectingSince !== 0 &&
+            Date.now() - connectingSince > 10_000) {
+          source.close();
+          connect();
+        }
+      }, 5_000);
+
+      await new Promise<never>(() => {
+        window.addEventListener("pagehide", () => window.clearInterval(watchdog), {
+          once: true,
+        });
       });
-      if (!source) return;
-      await new Promise<never>(() => {});
     })
     .catch(() => {});
 };

@@ -21,16 +21,19 @@ import {
   isConflict,
   loadComments,
   loadHistory,
+  loadLibrary,
   loadScene,
   onVaultEvent,
   readSnapshot,
   renameScene,
   restoreSnapshot,
+  saveLibrary,
   saveScene,
   saveThumb,
   slimAppState,
   updateComment,
   type Comment,
+  type LibraryItem,
   type Snapshot,
 } from "../lib/store";
 import { renderThumbnail } from "../lib/thumbnail";
@@ -45,6 +48,23 @@ const RETRY_DELAY = 3000;
 const UI_OPTIONS = {
   canvasActions: { toggleTheme: false },
 } as const;
+
+const signature = (items: readonly LibraryItem[]) =>
+  items
+    .map((item) => `${item.id}:${getSceneVersion(item.elements ?? [])}`)
+    .sort()
+    .join("|");
+
+/**
+ * Excalidraw restores its own copy of the library from browser storage and
+ * merges it with the vault items, so the same id can arrive twice. The vault
+ * keeps one entry per id.
+ */
+const dedupeLibrary = (items: readonly LibraryItem[]) => {
+  const byId = new Map<string, LibraryItem>();
+  for (const item of items) byId.set(item.id, item);
+  return [...byId.values()];
+};
 
 /**
  * The Excalidraw chrome is always dark to match the app. The canvas, though,
@@ -143,6 +163,21 @@ export default function Editor({
   const inflight = useRef<Promise<void> | null>(null);
   const lastThumbAt = useRef(0);
   const viewDirty = useRef(false);
+  const libraryRev = useRef<string | null>(null);
+  const librarySignature = useRef("");
+  const libraryTimer = useRef<number | null>(null);
+
+  const [libraryItems] = useState(() =>
+    loadLibrary()
+      .then((r) => {
+        if (r) {
+          libraryRev.current = r.rev;
+          librarySignature.current = signature(r.items);
+        }
+        return r?.items ?? [];
+      })
+      .catch(() => []),
+  );
 
   // declared ahead of flush so the timer helpers and flush can reach each
   // other without recursing through a stale closure
@@ -322,6 +357,40 @@ export default function Editor({
     [schedule],
   );
 
+  const onLibraryChange = useCallback(
+    (items: readonly LibraryItem[]) => {
+      const deduped = dedupeLibrary(items);
+      const next = signature(deduped);
+      const duplicates = deduped.length !== items.length;
+      if (next === librarySignature.current) {
+        if (duplicates) {
+          api?.updateLibrary({ libraryItems: deduped, merge: false });
+        }
+        return;
+      }
+      librarySignature.current = next;
+      if (duplicates) {
+        api?.updateLibrary({ libraryItems: deduped, merge: false });
+      }
+      if (libraryTimer.current !== null) window.clearTimeout(libraryTimer.current);
+      libraryTimer.current = window.setTimeout(async () => {
+        libraryTimer.current = null;
+        try {
+          const saved = await saveLibrary(deduped, libraryRev.current);
+          libraryRev.current = saved.rev;
+        } catch (err) {
+          if (!isConflict(err)) return;
+          const fresh = await loadLibrary();
+          if (!fresh) return;
+          libraryRev.current = fresh.rev;
+          librarySignature.current = signature(fresh.items);
+          api?.updateLibrary({ libraryItems: fresh.items, merge: true });
+        }
+      }, 600);
+    },
+    [api],
+  );
+
   const refreshHistory = useCallback(async () => {
     const { entries, bytes } = await loadHistory(meta.id);
     setSnapshots(entries);
@@ -433,6 +502,17 @@ export default function Editor({
   useEffect(
     () =>
       onVaultEvent((event) => {
+        if (event.type === "library") {
+          loadLibrary().then((fresh) => {
+            if (!fresh) return;
+            libraryRev.current = fresh.rev;
+            librarySignature.current = signature(fresh.items);
+            Promise.resolve(
+              api?.updateLibrary({ libraryItems: fresh.items, merge: true }),
+            ).catch(() => {});
+          });
+          return;
+        }
         if (event.id !== meta.id) return;
         if (event.type === "history") {
           refreshHistory();
@@ -453,7 +533,7 @@ export default function Editor({
         refreshHistory();
         refreshComments();
       }),
-    [meta.id, adoptFromDisk, refreshHistory, refreshComments, cancelPending],
+    [meta.id, adoptFromDisk, refreshHistory, refreshComments, cancelPending, api],
   );
 
   const preview = useCallback(
@@ -914,12 +994,15 @@ export default function Editor({
               elements: initial.elements as any,
               appState: initial.appState,
               files: (initial.files ?? {}) as any,
+              libraryItems: libraryItems as any,
               scrollToContent: initial.appState?.scrollX === undefined,
             }}
             onChange={onChange}
+            onLibraryChange={onLibraryChange}
             excalidrawAPI={setApi}
             UIOptions={UI_OPTIONS as any}
             name={meta.name}
+            libraryReturnUrl={`${window.location.origin}${window.location.pathname}?scene=${meta.id}`}
           >
             <Footer>
               <FontSize api={api} />
