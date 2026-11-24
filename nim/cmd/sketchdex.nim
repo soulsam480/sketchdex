@@ -1,17 +1,18 @@
-import std/[asyncdispatch, json, os, strutils]
+import std/[asyncdispatch, json, os, osproc, strutils]
 
 import ../core/[metrics_data, textmetrics]
 import ../mcp/[docs, rpc, stdio]
 import ../server/[agent, http, render, vault]
 
 const
-  Version* = "0.2.0"
+  Version* = "0.2.1"
   SourceRoot = parentDir(parentDir(currentSourcePath()))
   Usage = "sketchdex " & Version & "\n\n" &
     "  sketchdex mcp             run MCP over stdio\n" &
     "  sketchdex app             serve the app, REST API, SSE, and MCP HTTP\n" &
     "  sketchdex vault           print the vault path\n" &
-    "  sketchdex docs [topic]    print the manual\n\n" &
+    "  sketchdex docs [topic]    print the manual\n" &
+    "  sketchdex update [--check] update the binary and UI assets\n\n" &
     "  --vault <dir>             scene folder\n" &
     "  --port <n>                app port, default 5173\n" &
     "  --assets <dir>            built app directory, default dist/\n" &
@@ -21,7 +22,7 @@ const
 
 type
   Command = enum
-    cmdMcp, cmdApp, cmdDocs, cmdVault
+    cmdMcp, cmdApp, cmdDocs, cmdVault, cmdUpdate
   Options = object
     command: Command
     port: int
@@ -29,7 +30,7 @@ type
     assetsDir: string
     maxBodyBytes: int
     docsTopic: string
-    help, version: bool
+    help, version, updateCheck: bool
 
 proc usageError(message: string) {.noreturn.} =
   stderr.writeLine("sketchdex: " & message)
@@ -86,6 +87,8 @@ proc parseOptions(arguments: seq[string]): Options =
       result.help = true
     of "--no-open":
       discard
+    of "--check":
+      result.updateCheck = true
     of "--port":
       if seenPort: usageError("--port may only be supplied once")
       result.port = parsePort(optionValue(arguments, index, "--port"))
@@ -144,6 +147,10 @@ proc parseOptions(arguments: seq[string]): Options =
       result.command = cmdVault
       if positional.len > 1:
         usageError("vault accepts no arguments")
+    of "update":
+      result.command = cmdUpdate
+      if positional.len > 1:
+        usageError("update accepts no arguments")
     else:
       usageError("unknown command \"" & positional[0] & "\"")
   elif positional.len > 1:
@@ -226,6 +233,133 @@ proc runMcp(options: Options) =
     dispatchAgent(api, name, args, api.vault.root)
   serveStdio(dispatcher)
 
+const ReleaseRepo = "soulsam480/sketchdex"
+
+proc versionParts(value: string): seq[int] =
+  for part in value.split('.'):
+    try: result.add(parseInt(part))
+    except ValueError: result.add(0)
+
+proc versionLess(a, b: string): bool =
+  let left = versionParts(a)
+  let right = versionParts(b)
+  for index in 0 ..< max(left.len, right.len):
+    let l = if index < left.len: left[index] else: 0
+    let r = if index < right.len: right[index] else: 0
+    if l != r: return l < r
+  false
+
+proc platformSuffix(): string =
+  let osName =
+    when defined(macosx): "darwin"
+    elif defined(windows): "windows"
+    else: "linux"
+  let arch =
+    when hostCPU == "arm64" or hostCPU == "aarch64": "arm64"
+    else: "x64"
+  osName & "-" & arch
+
+proc runCurl(url, destination: string): string =
+  let command =
+    if destination.len > 0:
+      "curl -fsSL " & quoteShell(url) & " -o " & quoteShell(destination)
+    else:
+      "curl -fsSL " & quoteShell(url)
+  let result = execCmdEx(command, options = {poUsePath, poStdErrToStdOut})
+  if result.exitCode != 0:
+    raise newException(IOError, "curl failed: " & result.output.strip)
+  result.output
+
+proc sha256(path: string): string =
+  let command =
+    when defined(macosx):
+      "shasum -a 256 " & quoteShell(path)
+    else:
+      "sha256sum " & quoteShell(path)
+  let result = execCmdEx(command, options = {poUsePath, poStdErrToStdOut})
+  if result.exitCode != 0:
+    raise newException(IOError, "sha256 failed: " & result.output.strip)
+  result.output.splitWhitespace()[0]
+
+proc runUpdate(checkOnly: bool) =
+  let latest = parseJson(runCurl(
+    "https://api.github.com/repos/" & ReleaseRepo & "/releases/latest", ""))
+  let tag = latest["tag_name"].getStr
+  let version = tag.strip(chars = {'v'})
+  if not versionLess(Version, version):
+    stdout.writeLine("sketchdex " & Version & " is up to date")
+    return
+
+  let suffix = platformSuffix()
+  let assetName = "sketchdex-" & version & "-" & suffix & ".tar.gz"
+  var download = ""
+  for asset in latest["assets"]:
+    if asset["name"].getStr == assetName:
+      download = asset["browser_download_url"].getStr
+  if download.len == 0:
+    stderr.writeLine("sketchdex update: no " & assetName & " in " & tag)
+    stderr.writeLine("  https://github.com/" & ReleaseRepo & "/releases/tag/" & tag)
+    quit(1)
+
+  if checkOnly:
+    stdout.writeLine("sketchdex " & Version & " can update to " & version)
+    stdout.writeLine(download)
+    return
+
+  when defined(windows):
+    stdout.writeLine("download and replace the binary manually:")
+    stdout.writeLine("  " & download)
+    return
+
+  let temporary = getTempDir() / ("sketchdex-update-" & $getCurrentProcessId())
+  removeDir(temporary)
+  createDir(temporary)
+  defer:
+    try: removeDir(temporary)
+    except OSError: discard
+
+  let tarball = temporary / assetName
+  discard runCurl(download, tarball)
+  discard runCurl(download & ".sha256", tarball & ".sha256")
+  let expected = readFile(tarball & ".sha256").splitWhitespace()[0]
+  if sha256(tarball) != expected:
+    raise newException(IOError, "checksum mismatch for " & assetName)
+
+  let extracted = execCmdEx("tar -xzf " & quoteShell(tarball) & " -C " & quoteShell(temporary),
+    options = {poUsePath, poStdErrToStdOut})
+  if extracted.exitCode != 0:
+    raise newException(IOError, "tar failed: " & extracted.output.strip)
+
+  let root = temporary / ("sketchdex-" & version & "-" & suffix)
+  let currentBinary = getAppFilename()
+  let configuredAssets = getEnv("SKETCHDEX_ASSETS")
+  let currentDist =
+    if configuredAssets.len > 0: absolutePath(configuredAssets)
+    else: defaultAssetsDir()
+
+  let stagedBinary = currentBinary & ".new"
+  copyFile(root / "sketchdex", stagedBinary)
+  setFilePermissions(stagedBinary, {
+    fpUserRead, fpUserWrite, fpUserExec,
+    fpGroupRead, fpGroupExec,
+    fpOthersRead, fpOthersExec
+  })
+  moveFile(stagedBinary, currentBinary)
+
+  let oldDist = currentDist & ".old"
+  removeDir(oldDist)
+  try:
+    moveDir(currentDist, oldDist)
+    moveDir(root / "dist", currentDist)
+    removeDir(oldDist)
+  except OSError:
+    if dirExists(oldDist) and not dirExists(currentDist):
+      moveDir(oldDist, currentDist)
+    raise
+
+  stdout.writeLine("sketchdex updated to " & version)
+  stdout.writeLine("restart the MCP client and the app to use it")
+
 when isMainModule:
   let options = parseOptions(commandLineParams())
   if options.help:
@@ -248,3 +382,5 @@ when isMainModule:
       quit(2)
   of cmdVault:
     stdout.writeLine(newVault(configuredVault(options.vaultPath)).root)
+  of cmdUpdate:
+    runUpdate(options.updateCheck)
