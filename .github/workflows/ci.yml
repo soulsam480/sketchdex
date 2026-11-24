@@ -34,3 +34,17 @@ jobs:
       # an MCP client (including a render through the runner's Chrome), and
       # probes `sketchdex app`
       - run: node test/e2e.mjs
+
+  core:
+    name: core / node 22
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --omit=dev
+      - run: npm run test:core

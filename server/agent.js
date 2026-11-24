@@ -1,6 +1,7 @@
 import { createStore } from "./store.js";
 import { createHistory } from "./history.js";
-import { buildElements, growContainerFor, patchElement } from "./elements.js";
+import { growContainerFor, patchElement } from "./elements.js";
+import { buildElements } from "./core.js";
 import { inspectScene } from "./inspect.js";
 import { svgToSpecs } from "./svg.js";
 import { freshAppState, inkFor, paperOf } from "./paper.js";
@@ -287,8 +288,8 @@ export function createAgentApi(vaultPath) {
      * narrower helpers from being a ceiling.
      */
     async writeScene(idOrName, { elements, appState, label } = {}) {
-      return mutate(idOrName, label, (payload) => {
-        const { elements: built, warnings } = buildElements(elements, {
+      return mutate(idOrName, label, async (payload) => {
+        const { elements: built, warnings } = await buildElements(elements, {
           existing: [],
         });
         return {
@@ -329,7 +330,7 @@ export function createAgentApi(vaultPath) {
       const meta = await store.create({ name });
       if (elements.length) {
         const appState = freshAppState();
-        const { elements: built, warnings } = buildElements(elements, {
+        const { elements: built, warnings } = await buildElements(elements, {
           ink: inkFor(paperOf({ appState })),
         });
         await store.save(meta.id, {
@@ -349,8 +350,8 @@ export function createAgentApi(vaultPath) {
     },
 
     async addElements(idOrName, elements, { label } = {}) {
-      return mutate(idOrName, label, (payload) => {
-        const { elements: built, warnings, updated } = buildElements(elements, {
+      return mutate(idOrName, label, async (payload) => {
+        const { elements: built, warnings, updated } = await buildElements(elements, {
           existing: payload.elements,
           ink: inkFor(paperOf(payload)),
         });
@@ -587,8 +588,8 @@ export function createAgentApi(vaultPath) {
     },
 
     async replaceElements(idOrName, elements, { label } = {}) {
-      return mutate(idOrName, label, (payload) => {
-        const { elements: built, warnings } = buildElements(elements, {
+      return mutate(idOrName, label, async (payload) => {
+        const { elements: built, warnings } = await buildElements(elements, {
           ink: inkFor(paperOf(payload)),
         });
         return {
@@ -619,8 +620,8 @@ export function createAgentApi(vaultPath) {
       const result = await mutate(
         meta.id,
         options.label,
-        (payload) => {
-          const { elements: built, warnings, updated } = buildElements(converted.specs, {
+        async (payload) => {
+          const { elements: built, warnings, updated } = await buildElements(converted.specs, {
             existing: payload.elements,
             ink,
           });
