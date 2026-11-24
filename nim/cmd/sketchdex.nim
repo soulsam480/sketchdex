@@ -18,6 +18,7 @@ const
     "  --port <n>                app port, default 5173\n" &
     "  --assets <dir>            built app directory, default dist/\n" &
     "  --max-body <bytes>        request body cap, default 32 MiB\n" &
+    "  --strict-port             app mode fails if --port is taken\n" &
     "  --no-open                 do not open the browser for mcp --serve\n" &
     "  --version                 print the version\n" &
     "  --help                    print this help\n"
@@ -32,7 +33,7 @@ type
     assetsDir: string
     maxBodyBytes: int
     docsTopic: string
-    help, version, updateCheck, serve, noOpen: bool
+    help, version, updateCheck, serve, noOpen, strictPort: bool
 
 proc usageError(message: string) {.noreturn.} =
   stderr.writeLine("sketchdex: " & message)
@@ -91,6 +92,8 @@ proc parseOptions(arguments: seq[string]): Options =
       result.noOpen = true
     of "--serve":
       result.serve = true
+    of "--strict-port":
+      result.strictPort = true
     of "--check":
       result.updateCheck = true
     of "--port":
@@ -224,8 +227,9 @@ proc runApp(options: Options) {.async.} =
       started = true
       break
     except OSError as error:
-      if options.port == 0 or not addressInUse(error):
-        raise
+      if options.port == 0 or not addressInUse(error) or options.strictPort:
+        stderr.writeLine("sketchdex app: " & error.msg)
+        quit(1)
       inc port
   if not started:
     stderr.writeLine("sketchdex app: no free port found")
@@ -267,6 +271,7 @@ proc startSidecar(options: Options): Process =
   if options.port > 0:
     arguments.add("--port")
     arguments.add($options.port)
+    arguments.add("--strict-port")
     url = "http://127.0.0.1:" & $options.port
   if options.vaultPath.len > 0:
     arguments.add("--vault")
@@ -274,7 +279,19 @@ proc startSidecar(options: Options): Process =
   if options.assetsDir.len > 0:
     arguments.add("--assets")
     arguments.add(options.assetsDir)
-  result = startProcess(getAppFilename(), args = arguments, options = {poUsePath})
+  let child = startProcess(getAppFilename(), args = arguments, options = {poUsePath})
+  if options.port > 0:
+    sleep(250)
+    if not child.running():
+      child.close()
+      if portAccepts(options.port):
+        stderr.writeLine("sketchdex: app already listening on " & url)
+        if not options.noOpen:
+          openBrowser(url)
+        return nil
+      stderr.writeLine("sketchdex: the app exited; run `sketchdex app` to see why")
+      return nil
+  result = child
   stderr.writeLine("sketchdex: app " & url & " beside the stdio session")
   if not options.noOpen:
     openBrowser(url)
