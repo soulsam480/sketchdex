@@ -16,19 +16,25 @@ real thing. MIT.
 
 ## Install
 
-Needs Node 20 or newer. Rendering (`render_scene`) needs a Chromium-based
+Sketchdex is a native binary. Node 20 or newer is only needed if you install
+from npm or build from source. Rendering (`render_scene`) needs a Chromium
 browser and `SKETCHDEX_BROWSER` pointing at it. Everything else works without
 one.
 
-The quickest way is to let the agent you already have do it. Paste this into
-any agent that can run commands:
+```bash
+curl -fsSL https://raw.githubusercontent.com/soulsam480/sketchdex/main/install.sh | bash
+```
+
+That installs `~/.local/bin/sketchdex` and the UI assets under
+`~/.local/share/sketchdex`. Or install with `npm install -g sketchdex`, or
+download the release tarball. The MCP command is `sketchdex mcp`.
+
+The quickest way to wire an agent is to paste this into one that can run
+commands:
 
 > install the sketchdex mcp server for me. run `sketchdex docs install` for the steps.
 
 Or by hand:
-
-Install the binary with `npm install -g sketchdex`, or download the release
-asset for your platform. The MCP command is `sketchdex mcp`.
 
 **Claude Code**
 

@@ -4,11 +4,21 @@ Sketchdex is a native stdio MCP server. Every client below runs the same
 command: `sketchdex mcp`. The binary owns the vault, the MCP transport, the
 app, and rendering orchestration.
 
-There are two ways to get it:
+The one-line install:
 
-1. Download the release binary for your platform from
-   `https://github.com/soulsam480/sketchdex/releases`, make it executable, and
-   put it on `PATH`.
+```bash
+curl -fsSL https://raw.githubusercontent.com/soulsam480/sketchdex/main/install.sh | bash
+```
+
+It installs `~/.local/bin/sketchdex` and the UI assets under
+`~/.local/share/sketchdex`. Override the prefix with `SKETCHDEX_PREFIX`, or a
+specific version with `SKETCHDEX_VERSION`.
+
+Other ways:
+
+1. Download the release tarball for your platform from
+   `https://github.com/soulsam480/sketchdex/releases`, extract it, and put the
+   binary on `PATH`.
 2. Install the npm package, which ships the same binary:
    `npm install -g sketchdex`.
 
