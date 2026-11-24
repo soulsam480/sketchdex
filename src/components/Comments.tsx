@@ -11,6 +11,9 @@ import type { Comment } from "../lib/store";
  * comment never races a geometry save.
  */
 
+const capitalise = (value: string) =>
+  value.length > 0 ? value[0].toUpperCase() + value.slice(1) : value;
+
 const relative = (at: number) => {
   const delta = Date.now() - at;
   if (delta < 60_000) return "just now";
@@ -95,9 +98,11 @@ export default function Comments({
         <>
           <div className="hairline-b px-3.5 py-2">
             <div className="truncate text-xs text-chalk">
-              {element.text?.trim() || `${element.type}`}
+              {element.text?.trim() || capitalise(element.type)}
             </div>
-            <span className="label-mono">{element.type}</span>
+            {element.text?.trim() ? (
+              <span className="label-mono">{element.type}</span>
+            ) : null}
           </div>
 
           <div className="scrollbar-thin flex-1 overflow-y-auto">

@@ -982,6 +982,9 @@ proc newHttpServer*(vaultPath, assetsDir: string;
 
 proc listen*(server: HttpServer; port: Port) {.async.} =
   server.socket = newAsyncSocket()
+  # a port that was just closed sits in TIME_WAIT; without this a restart lands
+  # on the next port and every printed URL is a lie
+  server.socket.setSockOpt(OptReuseAddr, true)
   try:
     server.socket.bindAddr(port, "127.0.0.1")
     server.socket.listen()
