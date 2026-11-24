@@ -265,10 +265,10 @@ proc runCurl(url, destination: string): string =
       "curl -fsSL " & quoteShell(url) & " -o " & quoteShell(destination)
     else:
       "curl -fsSL " & quoteShell(url)
-  let result = execCmdEx(command, options = {poUsePath, poStdErrToStdOut})
-  if result.exitCode != 0:
-    raise newException(IOError, "curl failed: " & result.output.strip)
-  result.output
+  let outcome = execCmdEx(command, options = {poUsePath, poStdErrToStdOut})
+  if outcome.exitCode != 0:
+    raise newException(IOError, "curl failed: " & outcome.output.strip)
+  outcome.output
 
 proc sha256(path: string): string =
   let command =
@@ -276,10 +276,10 @@ proc sha256(path: string): string =
       "shasum -a 256 " & quoteShell(path)
     else:
       "sha256sum " & quoteShell(path)
-  let result = execCmdEx(command, options = {poUsePath, poStdErrToStdOut})
-  if result.exitCode != 0:
-    raise newException(IOError, "sha256 failed: " & result.output.strip)
-  result.output.splitWhitespace()[0]
+  let outcome = execCmdEx(command, options = {poUsePath, poStdErrToStdOut})
+  if outcome.exitCode != 0:
+    raise newException(IOError, "sha256 failed: " & outcome.output.strip)
+  outcome.output.splitWhitespace()[0]
 
 proc runUpdate(checkOnly: bool) =
   let latest = parseJson(runCurl(
