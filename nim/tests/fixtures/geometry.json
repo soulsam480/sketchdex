@@ -1,0 +1,1790 @@
+[
+  {
+    "name": "polygon-default",
+    "input": [
+      {
+        "type": "polygon"
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "x": 50,
+          "y": 0,
+          "width": 86.60254037844388,
+          "height": 100,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              43.301270189221924,
+              25
+            ],
+            [
+              43.30127018922194,
+              75
+            ],
+            [
+              0,
+              100
+            ],
+            [
+              -43.301270189221924,
+              75.00000000000001
+            ],
+            [
+              -43.30127018922193,
+              24.999999999999993
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "roundness": null
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "polygon-seven",
+    "input": [
+      {
+        "type": "polygon",
+        "sides": 7,
+        "cx": 20,
+        "cy": 30,
+        "rx": 40,
+        "ry": 25,
+        "rotation": 15,
+        "id": "poly",
+        "strokeColor": "#123456"
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "id": "poly",
+          "strokeColor": "#123456",
+          "x": 58.63703305156273,
+          "y": 36.47047612756302,
+          "width": 77.93969198089425,
+          "height": 47.89657401645937,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -22.64135207877309,
+              16.443580269186384
+            ],
+            [
+              -57.32777818248521,
+              15.632408710052225
+            ],
+            [
+              -77.93969198089425,
+              -1.8226859484901539
+            ],
+            [
+              -68.95590197738085,
+              -22.777661409516046
+            ],
+            [
+              -37.14138528050972,
+              -31.452993747272984
+            ],
+            [
+              -6.453121860896012,
+              -21.315980766900566
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "roundness": null
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "polygon-cap",
+    "input": [
+      {
+        "type": "polygon",
+        "sides": 20000,
+        "r": 1
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "x": 50,
+          "y": 49,
+          "width": 2,
+          "height": 2,
+          "points": {
+            "$samples": {
+              "count": 10001,
+              "indices": [
+                0,
+                2500,
+                5000,
+                7500,
+                10000
+              ],
+              "values": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  0,
+                  2
+                ],
+                [
+                  -1,
+                  1
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              "closed": true
+            }
+          },
+          "roundness": null
+        }
+      ],
+      "warnings": [
+        "polygon sides 20000 capped at 10000"
+      ]
+    }
+  },
+  {
+    "name": "star",
+    "input": [
+      {
+        "type": "star",
+        "points": 5,
+        "cx": 10,
+        "cy": 20,
+        "r": 50,
+        "innerRatio": 0.4,
+        "rotation": -90
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              11.75570504584946,
+              33.819660112501055
+            ],
+            [
+              47.55282581475767,
+              34.54915028125263
+            ],
+            [
+              19.021130325903066,
+              56.180339887498945
+            ],
+            [
+              29.389262614623657,
+              90.45084971874738
+            ],
+            [
+              -1.7763568394002505e-15,
+              70
+            ],
+            [
+              -29.389262614623654,
+              90.45084971874738
+            ],
+            [
+              -19.021130325903073,
+              56.180339887498945
+            ],
+            [
+              -47.55282581475768,
+              34.549150281252636
+            ],
+            [
+              -11.755705045849469,
+              33.819660112501055
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "x": 10.000000000000004,
+          "y": -30,
+          "width": 95.10565162951536,
+          "height": 90.45084971874738,
+          "roundness": null
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "arc-open",
+    "input": [
+      {
+        "type": "arc",
+        "cx": 10,
+        "cy": 5,
+        "rx": 40,
+        "ry": 20,
+        "from": 30,
+        "to": 300,
+        "segments": 8
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "x": 44.64101615137755,
+          "y": 14.999999999999998,
+          "width": 73.27804920294028,
+          "height": 39.78607569224828,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -16.9494685426175,
+              7.937454830653769
+            ],
+            [
+              -39.8620638401796,
+              9.828897227476213
+            ],
+            [
+              -61.0148487553803,
+              5.0367961495795495
+            ],
+            [
+              -73.27804920294028,
+              -4.823619097949578
+            ],
+            [
+              -72.51822133118179,
+              -16.42878930606322
+            ],
+            [
+              -58.99147331172638,
+              -25.8670668058247
+            ],
+            [
+              -37.257141320583294,
+              -29.95717846477207
+            ],
+            [
+              -14.641016151377546,
+              -27.32050807568877
+            ]
+          ],
+          "roundness": {
+            "type": 2
+          }
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "arc-closed",
+    "input": [
+      {
+        "type": "arc",
+        "from": 30,
+        "to": 300,
+        "segments": 8,
+        "closed": true,
+        "roundness": null
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "roundness": null,
+          "x": 43.30127018922194,
+          "y": 24.999999999999996,
+          "width": 91.59756150367535,
+          "height": 99.4651892306207,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -21.186835678271876,
+              19.84363707663442
+            ],
+            [
+              -49.827579800224505,
+              24.57224306869053
+            ],
+            [
+              -76.26856094422538,
+              12.591990373948871
+            ],
+            [
+              -91.59756150367535,
+              -12.059047744873945
+            ],
+            [
+              -90.64777666397723,
+              -41.07197326515805
+            ],
+            [
+              -73.73934163965798,
+              -64.66766701456174
+            ],
+            [
+              -46.57142665072912,
+              -74.89294616193017
+            ],
+            [
+              -18.30127018922193,
+              -68.30127018922192
+            ],
+            [
+              -43.30127018922194,
+              -24.999999999999996
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "capsule",
+    "input": [
+      {
+        "type": "capsule",
+        "x": 10,
+        "y": 20,
+        "width": 120,
+        "height": 60,
+        "radius": 20,
+        "segments": 6
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "x": 110,
+          "y": 20,
+          "width": 120,
+          "height": 60,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              15.608864081675918,
+              7.769342117731188
+            ],
+            [
+              20,
+              24.81872992621534
+            ],
+            [
+              19.62261771883658,
+              42.86650301421664
+            ],
+            [
+              9.926500551266614,
+              57.350952544181084
+            ],
+            [
+              -7.70996788194455,
+              60
+            ],
+            [
+              -25.78247591145842,
+              60
+            ],
+            [
+              -43.85498394097229,
+              60
+            ],
+            [
+              -61.92749197048615,
+              60
+            ],
+            [
+              -80.00000000000001,
+              60
+            ],
+            [
+              -95.60886408167593,
+              52.2306578822688
+            ],
+            [
+              -100,
+              35.181270073784646
+            ],
+            [
+              -99.62261771883658,
+              17.133496985783346
+            ],
+            [
+              -89.9265005512666,
+              2.6490474558189057
+            ],
+            [
+              -72.29003211805544,
+              0
+            ],
+            [
+              -54.21752408854157,
+              0
+            ],
+            [
+              -36.14501605902771,
+              0
+            ],
+            [
+              -18.07250802951384,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "roundness": {
+            "type": 2
+          }
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "path-smooth",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          [
+            0,
+            0
+          ],
+          {
+            "x": 20,
+            "y": 10
+          },
+          [
+            40,
+            0
+          ],
+          {
+            "x": 60,
+            "y": 20
+          }
+        ],
+        "resolution": 3
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              16.058268233841424,
+              8.817480470152427
+            ],
+            [
+              32.20016093844242,
+              2.733208158989224
+            ],
+            [
+              48.07956747388465,
+              5.9581692616340165
+            ],
+            [
+              60,
+              20
+            ]
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 60,
+          "height": 20,
+          "roundness": {
+            "type": 2
+          }
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "path-smooth-false",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            20,
+            10
+          ],
+          [
+            40,
+            0
+          ]
+        ],
+        "smooth": false,
+        "closed": true
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              20,
+              10
+            ],
+            [
+              40,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 40,
+          "height": 10,
+          "roundness": null
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "path-closed",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            30,
+            0
+          ],
+          [
+            30,
+            30
+          ]
+        ],
+        "closed": true,
+        "resolution": 3
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              16.80457789486553,
+              -3.333333333333334
+            ],
+            [
+              31.219097096604674,
+              3.657291289814024
+            ],
+            [
+              33.333333333333336,
+              20.90566913347266
+            ],
+            [
+              23.584686690653722,
+              25.723124460435816
+            ],
+            [
+              10.607349354152657,
+              13.94068268748599
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 33.333333333333336,
+          "height": 29.056457793769148,
+          "roundness": {
+            "type": 2
+          }
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "keyed-unwrap",
+    "input": [
+      {
+        "path": {
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              20,
+              10
+            ],
+            [
+              40,
+              0
+            ]
+          ],
+          "smooth": false
+        }
+      },
+      {
+        "rectangle": {
+          "x": 1,
+          "y": 2,
+          "width": 30,
+          "height": 40
+        }
+      },
+      {
+        "rectangle": {
+          "type": "ellipse",
+          "width": 50
+        }
+      },
+      {
+        "unknown": {
+          "width": 4
+        }
+      },
+      {
+        "rectangle": null
+      },
+      {
+        "rectangle": {
+          "x": 1
+        },
+        "extra": true
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              20,
+              10
+            ],
+            [
+              40,
+              0
+            ]
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 40,
+          "height": 10,
+          "roundness": null
+        },
+        {
+          "type": "rectangle",
+          "x": 1,
+          "y": 2,
+          "width": 30,
+          "height": 40
+        },
+        {
+          "type": "ellipse",
+          "width": 50
+        },
+        {
+          "unknown": {
+            "width": 4
+          }
+        },
+        {
+          "rectangle": null
+        },
+        {
+          "rectangle": {
+            "x": 1
+          },
+          "extra": true
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "repeat-grid",
+    "input": [
+      {
+        "type": "rectangle",
+        "id": "first",
+        "ref": "row",
+        "x": 5,
+        "y": 6,
+        "width": 10,
+        "height": 20,
+        "repeat": {
+          "count": 5,
+          "cols": 3,
+          "rows": 2,
+          "dx": 20,
+          "dy": 30
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "rectangle",
+          "ref": "row",
+          "x": 5,
+          "y": 6,
+          "width": 10,
+          "height": 20
+        },
+        {
+          "type": "rectangle",
+          "x": 25,
+          "y": 6,
+          "width": 10,
+          "height": 20
+        },
+        {
+          "type": "rectangle",
+          "x": 45,
+          "y": 6,
+          "width": 10,
+          "height": 20
+        },
+        {
+          "type": "rectangle",
+          "x": 5,
+          "y": 36,
+          "width": 10,
+          "height": 20
+        },
+        {
+          "type": "rectangle",
+          "x": 25,
+          "y": 36,
+          "width": 10,
+          "height": 20
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "repeat-around-rotate",
+    "input": [
+      {
+        "type": "rectangle",
+        "cx": 50,
+        "cy": 0,
+        "width": 10,
+        "height": 20,
+        "angle": 10,
+        "repeat": {
+          "around": {
+            "x": 0,
+            "y": 0
+          },
+          "count": 3,
+          "from": 10,
+          "to": 120,
+          "rotate": true
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "rectangle",
+          "cx": 49.2403876506104,
+          "cy": 8.682408883346517,
+          "width": 10,
+          "height": 20,
+          "angle": 10.174532925199433,
+          "x": -0.7596123493895988,
+          "y": 8.682408883346517
+        },
+        {
+          "type": "rectangle",
+          "cx": 21.130913087034973,
+          "cy": 45.31538935183249,
+          "width": 10,
+          "height": 20,
+          "angle": 11.134464013796315,
+          "x": -28.869086912965027,
+          "y": 45.31538935183249
+        },
+        {
+          "type": "rectangle",
+          "cx": -24.999999999999986,
+          "cy": 43.30127018922194,
+          "width": 10,
+          "height": 20,
+          "angle": 12.094395102393195,
+          "x": -74.99999999999999,
+          "y": 43.30127018922194
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "mirror-vertical",
+    "input": [
+      {
+        "type": "rectangle",
+        "id": "original",
+        "ref": "original",
+        "x": 10,
+        "y": 20,
+        "width": 30,
+        "height": 40,
+        "angle": 30,
+        "mirror": {
+          "axis": "vertical",
+          "at": 100
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "rectangle",
+          "id": "original",
+          "ref": "original",
+          "x": 10,
+          "y": 20,
+          "width": 30,
+          "height": 40,
+          "angle": 30
+        },
+        {
+          "type": "rectangle",
+          "x": 160,
+          "y": 20,
+          "width": 30,
+          "height": 40,
+          "angle": -30
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "mirror-horizontal-drop",
+    "input": [
+      {
+        "type": "rectangle",
+        "id": "original",
+        "ref": "original",
+        "x": 10,
+        "y": 20,
+        "width": 30,
+        "height": 40,
+        "angle": 30,
+        "mirror": {
+          "axis": "horizontal",
+          "at": 100,
+          "keep": false
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "rectangle",
+          "x": 10,
+          "y": 140,
+          "width": 30,
+          "height": 40,
+          "angle": -30
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "absolute-path-shift",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          [
+            10,
+            20
+          ],
+          {
+            "x": 30,
+            "y": 40
+          }
+        ],
+        "smooth": false,
+        "repeat": {
+          "count": 2,
+          "dx": 10,
+          "dy": -5
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "x": 10,
+          "y": 20,
+          "width": 20,
+          "height": 20,
+          "roundness": null
+        },
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "x": 20,
+          "y": 20,
+          "width": 20,
+          "height": 20,
+          "roundness": null
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "unknown-type",
+    "input": [
+      {
+        "type": "future-widget",
+        "x": 3,
+        "custom": {
+          "nested": [
+            1,
+            null,
+            false
+          ]
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "future-widget",
+          "x": 3,
+          "custom": {
+            "nested": [
+              1,
+              null,
+              false
+            ]
+          }
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "missing-type",
+    "input": [
+      {
+        "x": 1
+      },
+      {},
+      [],
+      {
+        "type": null
+      },
+      {
+        "type": 1
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "x": 1
+        },
+        {},
+        [],
+        {
+          "type": null
+        },
+        {
+          "type": 1
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "null-and-primitive-entries",
+    "input": [
+      null,
+      false,
+      0,
+      "rectangle",
+      [],
+      {
+        "type": "rectangle"
+      }
+    ],
+    "expected": {
+      "specs": [
+        null,
+        false,
+        0,
+        "rectangle",
+        [],
+        {
+          "type": "rectangle"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "prototype-keys",
+    "input": [
+      {
+        "type": "toString"
+      },
+      {
+        "type": "constructor"
+      },
+      {
+        "type": "__proto__"
+      }
+    ],
+    "expected": {
+      "specs": [],
+      "warnings": [
+        "could not build toString: make is not a function",
+        "could not build constructor: make is not a function",
+        "could not build __proto__: make is not a function"
+      ]
+    }
+  },
+  {
+    "name": "primitive-error",
+    "input": [
+      {
+        "type": "path",
+        "points": 5
+      }
+    ],
+    "expected": {
+      "specs": [],
+      "warnings": [
+        "could not build path: (spec.points ?? []).map is not a function"
+      ]
+    }
+  },
+  {
+    "name": "repeat-cap",
+    "input": [
+      {
+        "type": "rectangle",
+        "repeat": {
+          "count": 2001,
+          "dx": 1
+        }
+      }
+    ],
+    "expected": {
+      "specs": {
+        "$samples": {
+          "count": 2000,
+          "indices": [
+            0,
+            499,
+            999,
+            1499,
+            1999
+          ],
+          "values": [
+            {
+              "type": "rectangle"
+            },
+            {
+              "type": "rectangle",
+              "x": 499
+            },
+            {
+              "type": "rectangle",
+              "x": 999
+            },
+            {
+              "type": "rectangle",
+              "x": 1499
+            },
+            {
+              "type": "rectangle",
+              "x": 1999
+            }
+          ]
+        }
+      },
+      "warnings": [
+        "repeat count 2001 capped at 2000"
+      ]
+    }
+  },
+  {
+    "name": "truthiness",
+    "input": [
+      {
+        "type": "arc",
+        "closed": "yes",
+        "segments": 4
+      },
+      {
+        "type": "path",
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            20,
+            20
+          ]
+        ],
+        "smooth": 0,
+        "resolution": 2
+      },
+      {
+        "type": "rectangle",
+        "repeat": false,
+        "mirror": 0
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "x": 50,
+          "y": 0,
+          "width": 100,
+          "height": 50,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -14.644660940672622,
+              35.35533905932737
+            ],
+            [
+              -50,
+              50
+            ],
+            [
+              -85.35533905932738,
+              35.35533905932738
+            ],
+            [
+              -100,
+              6.123233995736766e-15
+            ],
+            [
+              -50,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "roundness": {
+            "type": 2
+          }
+        },
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              10,
+              10
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "x": 0,
+          "y": 0,
+          "width": 20,
+          "height": 20,
+          "roundness": {
+            "type": 2
+          }
+        },
+        {
+          "type": "rectangle",
+          "repeat": false,
+          "mirror": 0
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "field-preservation",
+    "input": [
+      {
+        "type": "polygon",
+        "sides": 4,
+        "cx": 1,
+        "cy": 2,
+        "r": 3,
+        "rx": 4,
+        "ry": 5,
+        "innerR": 6,
+        "innerRatio": 0.2,
+        "rotation": 7,
+        "from": 8,
+        "to": 9,
+        "segments": 10,
+        "radius": 11,
+        "smooth": true,
+        "closed": false,
+        "resolution": 12,
+        "x": 100,
+        "y": 200,
+        "width": 300,
+        "height": 400,
+        "points": [
+          [
+            9,
+            9
+          ]
+        ],
+        "roundness": {
+          "type": 3
+        },
+        "custom": "kept"
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "x": 4.970184606565288,
+          "y": 2.6093467170257374,
+          "width": 7.940369213130577,
+          "height": 9.925461516413222,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -4.457661980185878,
+              4.353384041180874
+            ],
+            [
+              -7.940369213130577,
+              -1.218693434051474
+            ],
+            [
+              -3.4827072329446978,
+              -5.572077475232348
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "roundness": {
+            "type": 3
+          },
+          "custom": "kept"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "roundness-defaults",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          [
+            5,
+            6
+          ]
+        ],
+        "smooth": true
+      },
+      {
+        "type": "polygon",
+        "smooth": true
+      },
+      {
+        "type": "arc",
+        "smooth": false
+      },
+      {
+        "type": "arc",
+        "roundness": null
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ]
+          ],
+          "x": 5,
+          "y": 6,
+          "width": 0,
+          "height": 0,
+          "roundness": {
+            "type": 2
+          }
+        },
+        {
+          "type": "line",
+          "x": 50,
+          "y": 0,
+          "width": 86.60254037844388,
+          "height": 100,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              43.301270189221924,
+              25
+            ],
+            [
+              43.30127018922194,
+              75
+            ],
+            [
+              0,
+              100
+            ],
+            [
+              -43.301270189221924,
+              75.00000000000001
+            ],
+            [
+              -43.30127018922193,
+              24.999999999999993
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "roundness": {
+            "type": 2
+          }
+        },
+        {
+          "type": "line",
+          "x": 50,
+          "y": 0,
+          "width": 100,
+          "height": 49.24038765061041,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -3.0153689607045777,
+              17.10100716628343
+            ],
+            [
+              -11.697777844051089,
+              32.13938048432695
+            ],
+            [
+              -24.999999999999975,
+              43.30127018922192
+            ],
+            [
+              -41.317591116653446,
+              49.240387650610394
+            ],
+            [
+              -58.68240888334647,
+              49.24038765061041
+            ],
+            [
+              -74.99999999999994,
+              43.30127018922196
+            ],
+            [
+              -88.30222215594885,
+              32.13938048432701
+            ],
+            [
+              -96.9846310392954,
+              17.101007166283505
+            ],
+            [
+              -100,
+              6.123233995736766e-15
+            ]
+          ],
+          "roundness": {
+            "type": 2
+          }
+        },
+        {
+          "type": "line",
+          "roundness": null,
+          "x": 50,
+          "y": 0,
+          "width": 100,
+          "height": 49.24038765061041,
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              -3.0153689607045777,
+              17.10100716628343
+            ],
+            [
+              -11.697777844051089,
+              32.13938048432695
+            ],
+            [
+              -24.999999999999975,
+              43.30127018922192
+            ],
+            [
+              -41.317591116653446,
+              49.240387650610394
+            ],
+            [
+              -58.68240888334647,
+              49.24038765061041
+            ],
+            [
+              -74.99999999999994,
+              43.30127018922196
+            ],
+            [
+              -88.30222215594885,
+              32.13938048432701
+            ],
+            [
+              -96.9846310392954,
+              17.101007166283505
+            ],
+            [
+              -100,
+              6.123233995736766e-15
+            ]
+          ]
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "mirror-then-repeat",
+    "input": [
+      {
+        "type": "rectangle",
+        "id": "first",
+        "ref": "pair",
+        "x": 10,
+        "width": 20,
+        "mirror": {
+          "at": 0
+        },
+        "repeat": {
+          "count": 2,
+          "dx": 50
+        }
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "rectangle",
+          "ref": "pair",
+          "x": 10,
+          "width": 20
+        },
+        {
+          "type": "rectangle",
+          "x": 60,
+          "width": 20
+        },
+        {
+          "type": "rectangle",
+          "x": -30,
+          "width": 20
+        },
+        {
+          "type": "rectangle",
+          "x": 20,
+          "width": 20
+        }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "name": "path-dense-closed",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100000,
+            0
+          ],
+          [
+            100000,
+            100000
+          ],
+          [
+            0,
+            100000
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            50000,
+            50000
+          ]
+        ],
+        "closed": true,
+        "resolution": 2001
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": {
+            "$samples": {
+              "count": 9997,
+              "indices": [
+                0,
+                2499,
+                4998,
+                7497,
+                9996
+              ],
+              "values": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  112500,
+                  50000
+                ],
+                [
+                  0,
+                  100000
+                ],
+                [
+                  28125,
+                  21875
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              "closed": true
+            }
+          },
+          "x": 0,
+          "y": 0,
+          "width": 122122.50420445917,
+          "height": 122122.50420445917,
+          "roundness": {
+            "type": 2
+          }
+        }
+      ],
+      "warnings": [
+        "path resolution 2001 capped at 1666"
+      ]
+    }
+  },
+  {
+    "name": "path-short-and-primitive-points",
+    "input": [
+      {
+        "type": "path",
+        "points": [
+          {
+            "x": -1e-9
+          },
+          [
+            10.5
+          ],
+          null,
+          7,
+          {
+            "x": -1.5
+          },
+          {
+            "x": 2.5
+          }
+        ],
+        "smooth": true,
+        "closed": false,
+        "resolution": 0,
+        "x": 359.9,
+        "y": -1,
+        "strokeColor": "transparent"
+      }
+    ],
+    "expected": {
+      "specs": [
+        {
+          "type": "line",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              7.1875000015,
+              0
+            ],
+            [
+              2.500000001,
+              0
+            ]
+          ],
+          "x": -1e-9,
+          "y": 0,
+          "strokeColor": "transparent",
+          "width": 7.1875000015,
+          "height": 0,
+          "roundness": {
+            "type": 2
+          }
+        }
+      ],
+      "warnings": []
+    }
+  }
+]
