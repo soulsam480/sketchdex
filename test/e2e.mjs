@@ -11,7 +11,7 @@
  * repo's own node_modules for the MCP client SDK, and a Chromium-based browser
  * on the machine for the render step.
  *
- *   npm run build && node test/e2e.mjs
+ *   npm test
  */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -62,8 +62,8 @@ const project = path.join(tmp, "project");
 fs.mkdirSync(project);
 fs.writeFileSync(path.join(project, "package.json"), JSON.stringify({ name: "e2e", private: true, type: "module" }));
 npm(["install", "--no-fund", "--no-audit", "--loglevel=error", tarball], project);
-const bin = path.join(project, "node_modules", "sketchdex", "bin", "sketchdex.js");
-assert(fs.existsSync(bin), "installed package has no bin/sketchdex.js");
+const bin = path.join(project, "node_modules", "sketchdex", "bin", win ? "sketchdex.exe" : "sketchdex");
+assert(fs.existsSync(bin), `installed package has no bin/${win ? "sketchdex.exe" : "sketchdex"}`);
 assert(
   !fs.existsSync(path.join(project, "node_modules", "electron")) &&
     !fs.existsSync(path.join(project, "node_modules", "@excalidraw")),
@@ -73,21 +73,21 @@ log("installed into a clean project, runtime deps only");
 
 /* ─── 2. the CLI ────────────────────────────────────────────────────── */
 
-const version = spawnSync(process.execPath, [bin, "--version"], { encoding: "utf8" }).stdout.trim();
+const version = spawnSync(bin, ["--version"], { encoding: "utf8" }).stdout.trim();
 assert(version === packed[0].version, `--version printed ${version}, expected ${packed[0].version}`);
-const printedVault = spawnSync(process.execPath, [bin, "vault", "--vault", vault], { encoding: "utf8" }).stdout.trim();
+const printedVault = spawnSync(bin, ["vault", "--vault", vault], { encoding: "utf8" }).stdout.trim();
 assert(path.resolve(printedVault) === path.resolve(vault), `vault flag not honoured: ${printedVault}`);
-const docsOut = spawnSync(process.execPath, [bin, "docs", "install"], { encoding: "utf8" });
+const docsOut = spawnSync(bin, ["docs", "install"], { encoding: "utf8" });
 assert(docsOut.status === 0 && /Claude Code/.test(docsOut.stdout) && /Cursor/.test(docsOut.stdout), "`sketchdex docs install` did not print the install guide");
-const docsBad = spawnSync(process.execPath, [bin, "docs", "nope"], { encoding: "utf8" });
+const docsBad = spawnSync(bin, ["docs", "nope"], { encoding: "utf8" });
 assert(docsBad.status === 2 && /Topics:/.test(docsBad.stderr), "`sketchdex docs nope` did not fail with the topic list");
 log(`cli ok (${version}), docs print`);
 
 /* ─── 3. MCP over stdio ─────────────────────────────────────────────── */
 
 const transport = new StdioClientTransport({
-  command: process.execPath,
-  args: [bin],
+  command: bin,
+  args: ["mcp"],
   env: { ...process.env, SKETCHDEX_VAULT: vault },
   stderr: "pipe",
 });
@@ -212,7 +212,7 @@ log("server exits with the client, no browser leftovers");
 /* ─── 4. the app ────────────────────────────────────────────────────── */
 
 const port = 5200 + Math.floor(Math.random() * 300);
-appChild = spawn(process.execPath, [bin, "app", "--port", String(port), "--no-open"], {
+appChild = spawn(bin, ["app", "--port", String(port), "--no-open"], {
   env: { ...process.env, SKETCHDEX_VAULT: vault },
   stdio: ["ignore", "pipe", "pipe"],
 });

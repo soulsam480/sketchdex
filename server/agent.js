@@ -1,7 +1,6 @@
 import { createStore } from "./store.js";
 import { createHistory } from "./history.js";
-import { growContainerFor, patchElement } from "./elements.js";
-import { buildElements } from "./core.js";
+import { buildElements, growContainerFor, patchElement } from "./elements.js";
 import { inspectScene } from "./inspect.js";
 import { svgToSpecs } from "./svg.js";
 import { freshAppState, inkFor, paperOf } from "./paper.js";

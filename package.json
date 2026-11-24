@@ -1,6 +1,6 @@
 {
   "name": "sketchdex",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "An MCP server that lets AI agents draw hand-drawn Excalidraw diagrams. Real .excalidraw files on your machine, with history, rendering and a local library app.",
   "keywords": [
     "mcp",
@@ -28,7 +28,7 @@
   "mcpName": "io.github.lucasr1b/sketchdex",
   "type": "module",
   "bin": {
-    "sketchdex": "bin/sketchdex.js"
+    "sketchdex": "bin/sketchdex"
   },
   "main": "server/agent.js",
   "exports": {
@@ -50,21 +50,21 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n server,ui -c blue,green \"npm:dev:server\" \"npm:dev:ui\"",
+    "dev:server": "node scripts/build-server.mjs && nim/bin/sketchdex app --port 5174 --assets dist",
+    "dev:ui": "vite",
     "build": "tsc -b && vite build",
     "build:core": "node scripts/build-core.mjs",
+    "build:server": "node scripts/build-server.mjs",
     "lint": "oxlint",
-    "test": "node test/e2e.mjs",
-    "test:core": "node scripts/build-core.mjs && node test/core/differential.mjs && node scripts/test-core-nim.mjs && node --test test/core/adapter.test.mjs test/core/normalize.test.mjs test/core/nim-path.test.mjs",
+    "test": "node scripts/build-server.mjs && node test/e2e.mjs",
+    "test:server:nim": "node scripts/test-server-nim.mjs",
+    "test:server": "node scripts/build-server.mjs && node scripts/test-server-nim.mjs && node test/server.e2e.mjs",
+    "test:core": "node scripts/build-core.mjs && node test/core/differential.mjs && node scripts/test-core-nim.mjs && node --test test/core/normalize.test.mjs",
     "test:core:nim": "node scripts/test-core-nim.mjs",
-    "bench:core": "node scripts/build-core.mjs && node test/core/benchmark.mjs",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:start": "electron .",
-    "app": "npm run build && electron-builder --mac --dir",
     "prepare": "node scripts/patch-excalidraw.mjs",
-    "prepublishOnly": "npm run lint && npm run build && node scripts/check-package.mjs && npm test",
-    "measure-fonts": "node scripts/measure-fonts.mjs"
+    "prepublishOnly": "npm run lint && npm run build && npm test && node scripts/check-package.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0"
@@ -77,42 +77,12 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "concurrently": "^10.0.4",
-    "electron": "^40.6.1",
-    "electron-builder": "^26.15.3",
     "idb-keyval": "^6.3.0",
     "oxlint": "^1.75.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.0",
-    "wait-on": "^9.1.0"
-  },
-  "build": {
-    "appId": "com.lucas.sketchdex",
-    "productName": "Sketchdex",
-    "directories": {
-      "output": "dist-electron",
-      "buildResources": "build"
-    },
-    "files": [
-      "electron/**/*",
-      "server/**/*",
-      "dist/**/*",
-      "package.json",
-      "!node_modules/**"
-    ],
-    "mac": {
-      "icon": "build/icon.png",
-      "target": [
-        {
-          "target": "dir",
-          "arch": [
-            "arm64"
-          ]
-        }
-      ],
-      "category": "public.app-category.productivity"
-    }
+    "vite": "^8.2.0"
   }
 }

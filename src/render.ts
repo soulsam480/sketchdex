@@ -2,8 +2,8 @@ import { FONT_FAMILY, exportToBlob, getCommonBounds } from "@excalidraw/excalidr
 import "@excalidraw/excalidraw/index.css";
 
 /**
- * Headless render target. mcp/render.js opens it in a headless Chromium (or,
- * in a checkout, in Electron through mcp/render-main.js).
+ * Headless render target. nim/server/render.nim opens it in a headless
+ * Chromium chosen by SKETCHDEX_BROWSER.
  *
  * The library thumbnails are SVG scaled into a small card, which is why strokes
  * in them read as heavier or lighter than they really are. This goes through
@@ -22,10 +22,9 @@ const numberParam = (key: string, fallback: number) => {
 };
 
 /**
- * Two ways out. The result is always left on `window`, which is what the
- * Electron driver polls for. When the page was opened with `?result=<url>`
- * (a plain headless Chromium, which has no way to read the window) it is also
- * POSTed there. Sent as text/plain so the cross-origin post needs no preflight.
+ * Two ways out. The result is always left on `window`. When the page was
+ * opened with `?result=<url>` it is also POSTed there. Sent as text/plain so
+ * the cross-origin post needs no preflight.
  */
 const post = (body: unknown) => {
   (window as any).__sketchdexShot = body;

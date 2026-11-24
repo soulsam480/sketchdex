@@ -14,11 +14,8 @@ import { renderScene } from "./render.js";
 import { TOPICS, TOPIC_NAMES, readTopic } from "./docs.js";
 
 /**
- * The Sketchdex tool set, independent of how it is transported.
- *
- * mcp/server.js serves this over stdio, which is what Claude Code and Codex
- * use. server/middleware.js serves the same thing over HTTP at /mcp on the dev
- * server, for clients that only speak to a URL. One definition either way.
+ * The JavaScript oracle for the Sketchdex tool set. The native CLI serves the
+ * Nim implementation over stdio and HTTP.
  *
  * Two things shape the tool list:
  *
@@ -526,7 +523,7 @@ const makeHandlers = (api) => ({
     pid: process.pid,
     startedAt: new Date(Date.now() - process.uptime() * 1000).toISOString(),
     uptimeMinutes: Math.round(process.uptime() / 60),
-    server: fileURLToPath(new URL("server.js", import.meta.url)),
+    server: fileURLToPath(new URL("../server/agent.js", import.meta.url)),
     vault: api.vault,
     node: process.version,
   }),
@@ -600,8 +597,7 @@ export { TOOLS };
 /**
  * Run one tool call and shape the result, independent of transport.
  *
- * Kept separate from the Server wiring because the worker process runs it over
- * plain IPC, with no MCP machinery of its own - see mcp/worker.js.
+ * Kept separate from the Server wiring so tests can call it directly.
  */
 export async function dispatch(api, name, rawArgs) {
   const handlers = makeHandlers(api);

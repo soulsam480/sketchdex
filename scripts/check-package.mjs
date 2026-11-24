@@ -13,8 +13,13 @@ const problems = [];
 const pkg = JSON.parse(read("package.json"));
 
 // the render page and the app must be prebuilt: an install has no Vite
-for (const rel of ["dist/render.html", "dist/index.html"]) {
-  if (!fs.existsSync(path.join(root, rel))) problems.push(`${rel} is missing; run npm run build`);
+const executable = process.platform === "win32" ? "sketchdex.exe" : "sketchdex";
+for (const rel of [`bin/${executable}`, "dist/render.html", "dist/index.html"]) {
+  if (!fs.existsSync(path.join(root, rel))) problems.push(`${rel} is missing; run npm run build and npm run build:server`);
+}
+if (pkg.bin?.sketchdex !== "bin/sketchdex") problems.push("package bin must point to bin/sketchdex");
+for (const entry of ["bin/", "dist/", "docs/"]) {
+  if (!pkg.files?.includes(entry)) problems.push(`package files must include ${entry}`);
 }
 
 /**

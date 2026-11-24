@@ -13,10 +13,8 @@ import { fileURLToPath } from "node:url";
  * strokes read as heavier or lighter than the real thing. This runs Excalidraw's
  * own canvas export in a hidden browser window instead, at real size.
  *
- * Which browser: a Chromium already on the machine (Chrome, Chromium, Edge,
- * Brave) run headless, so an `npx sketchdex` install needs nothing downloaded.
- * In a checkout that has Electron installed, Electron is the fallback, and
- * SKETCHDEX_BROWSER=<path to a binary> overrides both.
+ * Which browser: SKETCHDEX_BROWSER must point at a Chromium-based browser
+ * binary. There is no discovery, so the same path works on every machine.
  *
  * Ports: if the dev server is already up on 5173 the page is loaded from it and
  * reads the scene through the normal /api routes. Otherwise a throwaway server
@@ -78,103 +76,16 @@ const MIME = {
   ".png": "image/png",
 };
 
-/* ─── finding a browser ─────────────────────────────────────────────── */
+/* ─── browser configuration ─────────────────────────────────────────── */
 
-const MAC_APPS = [
-  "Google Chrome.app/Contents/MacOS/Google Chrome",
-  "Chromium.app/Contents/MacOS/Chromium",
-  "Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-  "Brave Browser.app/Contents/MacOS/Brave Browser",
-  "Vivaldi.app/Contents/MacOS/Vivaldi",
-  "Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
-];
-const LINUX_NAMES = [
-  "google-chrome",
-  "google-chrome-stable",
-  "chromium",
-  "chromium-browser",
-  "microsoft-edge",
-  "brave-browser",
-];
-const WIN_PATHS = [
-  ["Google", "Chrome", "Application", "chrome.exe"],
-  ["Microsoft", "Edge", "Application", "msedge.exe"],
-  ["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
-  ["Chromium", "Application", "chrome.exe"],
-];
-
-const inPath = (name) => {
-  const ext = process.platform === "win32" ? ".exe" : "";
-  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
-    const candidate = path.join(dir, name + ext);
-    if (dir && existsSync(candidate)) return candidate;
-  }
-  return null;
-};
-
-const findChromium = () => {
-  if (process.platform === "darwin") {
-    for (const base of ["/Applications", path.join(os.homedir(), "Applications")]) {
-      for (const app of MAC_APPS) {
-        const bin = path.join(base, app);
-        if (existsSync(bin)) return bin;
-      }
-    }
-    return null;
-  }
-  if (process.platform === "win32") {
-    const roots = [
-      process.env["PROGRAMFILES"],
-      process.env["PROGRAMFILES(X86)"],
-      process.env.LOCALAPPDATA,
-    ].filter(Boolean);
-    for (const root of roots) {
-      for (const parts of WIN_PATHS) {
-        const bin = path.join(root, ...parts);
-        if (existsSync(bin)) return bin;
-      }
-    }
-    return null;
-  }
-  for (const name of LINUX_NAMES) {
-    const bin = inPath(name);
-    if (bin) return bin;
-  }
-  return null;
-};
-
-/** Electron's binary, only in a checkout where it is installed. */
-const findElectron = async () => {
-  try {
-    const bin = (await import("electron")).default;
-    return typeof bin === "string" && existsSync(bin) ? bin : null;
-  } catch {
-    return null;
-  }
-};
-
-let browserPromise = null;
-/** @returns {{ kind: "chromium" | "electron", bin: string } | null} */
+/** @returns {{ kind: "chromium", bin: string } | null} */
 const findBrowser = () => {
-  if (!browserPromise) {
-    browserPromise = (async () => {
-      const forced = process.env.SKETCHDEX_BROWSER;
-      if (forced) {
-        const kind = /electron/i.test(forced) ? "electron" : "chromium";
-        return { kind, bin: forced };
-      }
-      const chromium = findChromium();
-      if (chromium) return { kind: "chromium", bin: chromium };
-      const electron = await findElectron();
-      if (electron) return { kind: "electron", bin: electron };
-      return null;
-    })();
-  }
-  return browserPromise;
+  const forced = process.env.SKETCHDEX_BROWSER;
+  return forced ? { kind: "chromium", bin: forced } : null;
 };
 
 export const NO_BROWSER_MESSAGE =
-  "render_scene needs a Chromium-based browser installed (Chrome, Chromium, Edge or Brave). None was found. Install one, or set SKETCHDEX_BROWSER to the path of a browser binary.";
+  "render_scene needs SKETCHDEX_BROWSER set to the path of a Chromium-based browser binary.";
 
 /* ─── serving the page ──────────────────────────────────────────────── */
 
@@ -357,37 +268,6 @@ const runChromium = async (bin, url, result) => {
   }
 };
 
-/**
- * Electron, the way it always worked: render-main.js opens a hidden window,
- * polls the page for its result and writes it to a file.
- */
-const runElectron = async (bin, url) => {
-  const dir = path.join(os.tmpdir(), "sketchdex-renders");
-  await fs.mkdir(dir, { recursive: true });
-  const outFile = path.join(dir, `.result-${process.pid}-${Date.now()}.json`);
-  const child = spawn(bin, [path.join(here, "render-main.js"), url, outFile], {
-    cwd: repo,
-    stdio: ["ignore", "ignore", "pipe"],
-  });
-  const handle = { child, profile: null };
-  liveBrowsers.add(handle);
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk;
-  });
-  try {
-    const code = await new Promise((resolve) => child.on("close", resolve));
-    const raw = await fs.readFile(outFile, "utf8").catch(() => "");
-    if (!raw) {
-      return { error: `render process exited ${code}\n${stderr.slice(-500)}` };
-    }
-    return JSON.parse(raw);
-  } finally {
-    child.kill();
-    liveBrowsers.delete(handle);
-    await fs.rm(outFile, { force: true }).catch(() => {});
-  }
-};
 
 /* ─── the render ────────────────────────────────────────────────────── */
 
@@ -440,15 +320,12 @@ export async function renderScene(
     const { x = 0, y = 0, width = 0, height = 0 } = region;
     query.set("region", [x, y, width, height].join(","));
   }
-  if (browser.kind === "chromium") query.set("result", `${temp.origin}/__result`);
+  query.set("result", `${temp.origin}/__result`);
 
   const url = `${origin}/render.html?${query}`;
 
   try {
-    const shot =
-      browser.kind === "chromium"
-        ? await runChromium(browser.bin, url, temp.result)
-        : await runElectron(browser.bin, url);
+    const shot = await runChromium(browser.bin, url, temp.result);
     if (shot.error) throw new Error(shot.error);
 
     /**

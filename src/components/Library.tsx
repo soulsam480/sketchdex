@@ -73,7 +73,7 @@ export default function Library({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="app-drag titlebar-inset hairline-b flex items-center gap-4 px-6 py-4">
+      <header className="hairline-b flex items-center gap-4 px-6 py-4">
         <Wordmark />
         <span className="label-mono hidden sm:inline">
           {plural(scenes.length, "scene")}
