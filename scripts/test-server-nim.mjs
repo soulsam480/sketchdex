@@ -6,14 +6,6 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const testsDir = path.join(root, "nim", "tests");
-const coreTests = new Set([
-  "test_cli.nim",
-  "test_elements.nim",
-  "test_geometry.nim",
-  "test_paper.nim",
-  "test_resample.nim",
-  "test_textmetrics.nim",
-]);
 const win = process.platform === "win32";
 
 const resolveCompiler = () => {
@@ -29,7 +21,7 @@ const tail = (value) => (value ?? "").trim().slice(-4000) || "<empty>";
 const browserMissing = /SKIP: Chromium unavailable|BrowserNotFoundError|Chromium-based browser installed/i;
 
 const tests = fs.readdirSync(testsDir)
-  .filter((name) => name.startsWith("test_") && name.endsWith(".nim") && name !== "test_helpers.nim" && !coreTests.has(name))
+  .filter((name) => name.startsWith("test_") && name.endsWith(".nim") && name !== "test_helpers.nim")
   .sort();
 
 if (tests.length === 0) {

@@ -79,29 +79,20 @@ Nim 2.2.14 uses ORC by default. ARC is automatic reference counting with destruc
 
 The build script passes `-d:release --opt:speed`. Release mode removes debug runtime overhead. The speed option favors execution time over binary size. The script does not force `--mm:arc`, so the compiler default remains.
 
-`server/core-worker.js` starts one child lazily, checks its version with `ping`, and reuses it. Persistence avoids process startup and repeated metrics loading. It keeps stdin and stdout open for many requests. It does not retain scene state. The phase 2 owner will make the 4.85 ms core number the mutation number.
+The full server imports `core/elements.nim` directly. There is no child process and no JSON bridge for element work.
 
-## Build, test, and benchmark
+## Build and test
 
 Run these commands from the repository root. The build script uses `nim` from `PATH`, then falls back to `mise exec -- nim`. Set `SKETCHDEX_NIM` to choose another compiler.
 
 ```sh
-npm run build:core
-npm run test:core
-npm run bench:core
+npm run build:server
+npm run test:server
 ```
 
-`build:core` creates `nim/bin/sketchdex-core`. `test:core` rebuilds, runs the JavaScript and Nim differential corpus, runs Nim unit tests, and checks the adapter, normalization, and real Nim-backed agent path.
+`build:server` creates `nim/bin/sketchdex` and copies it to `bin/sketchdex` for npm. `test:server` rebuilds, runs every Nim test in `nim/tests`, and runs the full server e2e against a scratch vault and `dist/`.
 
-`bench:core` rebuilds and compares JavaScript in-process, Nim core-only with the request parsed once, Nim warm over JSON-lines, and Nim one-shot. It checks parity and reports p50, p95, and operations per second.
-
-To time only repeated core builds, pass a request file and iteration count:
-
-```sh
-./nim/bin/sketchdex-core --bench request.json 100 --metrics server/font-metrics.json
-```
-
-The benchmark parses the request once, performs one warmup, and prints a JSON summary. The `nim-core` result excludes Node serialization, pipe transfer, and response parsing.
+The render test and the packaged e2e need `SKETCHDEX_BROWSER` set to a Chromium binary. There is no browser discovery.
 
 ## Further reading
 

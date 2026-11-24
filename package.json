@@ -46,22 +46,18 @@
     "dev:server": "node scripts/build-server.mjs && nim/bin/sketchdex app --port 5174 --assets dist",
     "dev:ui": "vite",
     "build": "tsc -b && vite build",
-    "build:core": "node scripts/build-core.mjs",
     "build:server": "node scripts/build-server.mjs",
     "lint": "oxlint",
     "test": "node scripts/build-server.mjs && node test/e2e.mjs",
     "test:server:nim": "node scripts/test-server-nim.mjs",
     "test:server": "node scripts/build-server.mjs && node scripts/test-server-nim.mjs && node test/server.e2e.mjs",
-    "test:core": "node scripts/build-core.mjs && node test/core/differential.mjs && node scripts/test-core-nim.mjs && node --test test/core/normalize.test.mjs",
-    "test:core:nim": "node scripts/test-core-nim.mjs",
     "preview": "vite preview",
     "prepare": "node scripts/patch-excalidraw.mjs",
     "prepublishOnly": "npm run lint && npm run build && npm test && node scripts/check-package.mjs"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@excalidraw/excalidraw": "^0.18.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
