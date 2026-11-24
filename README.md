@@ -123,7 +123,7 @@ from the environment so a client config can opt in once.
 
 ## What the agent gets
 
-Twenty-three tools over stdio. The ones that matter:
+Twenty-six tools over stdio. The ones that matter:
 
 | Tool | Does |
 |---|---|
@@ -134,6 +134,7 @@ Twenty-three tools over stdio. The ones that matter:
 | `render_scene` | A real canvas render as PNG, whole scene or a region, so the agent can look at its own work. |
 | `check_scene` | Layout problems found by geometry: hidden text, overlapping labels, dangling arrows, strays. |
 | `search_elements` | Find a shape by text, id or comment instead of reading the scene, ranked, with the snippet that matched. |
+| `browse_libraries`, `install_library`, `list_library` | The official Excalidraw library catalog: search it, install a set into the vault, see what is installed. |
 | `add_comment`, `list_comments`, `update_comment` | Notes that ride on an element, so they travel with save, copy, undo and history. |
 | `snapshot_scene`, `list_history`, `restore_snapshot` | The safety net. Every write snapshots the previous state first. |
 | `sketchdex_docs` | The manual by topic, so the agent can answer setup questions and fix errors itself. |

@@ -43,6 +43,15 @@ History with a count of pending agent writes, and the `Cmd K` switcher.
 Changes save on their own; there is no save button. `Cmd K` shadows
 Excalidraw's own add-link shortcut, so links go through the context menu.
 
+**Library** (the panel on the left of the canvas): the vault's reusable shapes,
+shared by every scene. Add a selection with the panel's button, drag an item onto
+the canvas to use it, or click **Browse libraries**: that opens Excalidraw's
+catalog, and Install comes back to this scene and lands in the panel. Items live
+in `library.excalidrawlib` at the vault root, not in browser storage, so they
+survive a cleared cache and are the same in every browser. The agent installs
+from the same catalog with `browse_libraries` and `install_library`, and an
+install shows up in an open panel without a reload.
+
 **Comments** is a mode, not a sidebar. Click **Comments** (the count is how many
 are open in the scene), then click a shape: the canvas does not select, move or
 edit anything while the mode is on, and a small card at the cursor lists that
@@ -66,12 +75,17 @@ Editing while the agent draws is fine. Both sides write deltas against a
 revision token and conflicting saves are merged, so a box the person moved
 stays moved when the agent adds the next one.
 
+Many tabs of the same scene are fine too. They share one live-change connection
+instead of one each, which matters because a browser allows about six
+connections per host and an editor per tab used to take one of them.
+
 ## What it serves
 
 Everything is bound to localhost and refuses requests from other hosts and
 cross-site writes.
 
 - `/`: the library and editor.
+- `/api/library`: the vault's library items, with a revision token for writes.
 - `POST /mcp`: the same tools over HTTP, for a client that can only be given
   a URL.
 - `POST /api/agent/<op>`: the same tools as plain REST, one JSON body per

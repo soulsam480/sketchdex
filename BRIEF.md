@@ -77,6 +77,9 @@ an exact name, or a unique part of a name.
 | `comment-add` | `{scene, elementId, body, author?, authorKind?, label}` | attach a comment to one element |
 | `comment-list` | `{scene, elementId?, status?, limit?}` | comments, with open and resolved counts |
 | `comment-update` | `{scene, elementId, commentId, action, label}` | `action` is `resolve`, `reopen` or `delete` |
+| `library-browse` | `{query?, limit?}` | search the official Excalidraw library catalog |
+| `library-install` | `{library}` | install a catalog id or a `.excalidrawlib` URL into the vault |
+| `library-list` | `{}` | what is installed, with element counts |
 
 **Comments** are stored on the element they are about, under
 `customData.sketchdex.comments`, so they travel with save, copy, duplicate, undo
@@ -88,6 +91,16 @@ idempotent and answer `changed: false` when the comment is already there, so a
 retry is safe. A canvas save is never authoritative for comments: the server
 re-attaches whatever the file holds, so a tab that is a second behind cannot
 erase a comment.
+
+**Libraries** are the vault's reusable Excalidraw shapes, stored once in
+`library.excalidrawlib` at the vault root and shown in the app's library panel.
+`library-browse` searches the official catalog by name, description or author
+and returns ids. `library-install` takes one of those ids, or a direct
+`.excalidrawlib` URL, and appends its items; installing the same library twice
+adds nothing. `library-list` shows what is there. Use this when the person asks
+for an icon set or a symbol you would otherwise have to draw, and check the
+catalog before drawing a logo by hand. These are not scene writes, so they take
+no `label` and create no snapshot.
 
 Rendering (`render_scene`) is MCP-only - it returns an image, which REST can't
 usefully hand back. Over shell, open the scene in the app instead.

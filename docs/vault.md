@@ -7,6 +7,7 @@ is actually using.
 ```
 ~/Documents/sketchdex/
 ├── index.json              names, timestamps, pins (a cache, not the truth)
+├── library.excalidrawlib   reusable shapes for the editor's library panel
 ├── scenes/<id>.excalidraw  the scene itself, real Excalidraw format
 ├── thumbs/<id>.svg         library previews
 ├── history/<id>/           snapshots taken before agent writes, gzipped
@@ -15,7 +16,9 @@ is actually using.
 
 The files are the truth. `index.json` is rebuilt from them if it is lost, so
 you can copy, sync or version the folder freely. Any scene opens on
-excalidraw.com or in any Excalidraw editor as it is.
+excalidraw.com or in any Excalidraw editor as it is. The library file is the
+same format as an Excalidraw library export, so it travels with the folder and
+opens there too.
 
 ## Moving it
 
