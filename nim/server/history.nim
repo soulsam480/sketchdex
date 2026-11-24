@@ -264,29 +264,3 @@ proc clear*(history: History; sceneId: string): JsonNode =
   except OSError: discard
   newJArray()
 
-proc restore*(history: History; vault: Vault; sceneId, snapId: string): JsonNode =
-  let snapshot = history.read(sceneId, snapId)
-  let current = vault.read(sceneId)
-  discard history.take(sceneId, current, label = "restore snapshot")
-
-  var next = copyNode(current)
-  let elements = snapshot.field("elements")
-  next["elements"] =
-    if elements.isNil or elements.kind == JNull: newJArray()
-    else: copyNode(elements)
-  let savedAppState = snapshot.field("appState")
-  if savedAppState.isObj:
-    var merged = newJObject()
-    let currentAppState = current.field("appState")
-    if currentAppState.isObj:
-      for key, value in currentAppState: merged[key] = copyNode(value)
-    for key, value in savedAppState: merged[key] = copyNode(value)
-    next["appState"] = merged
-
-  let revision = current.field("rev")
-  var options = SaveOptions(touch: true)
-  if revision.kind == JString: options.ifRev = some(revision.getStr)
-  discard vault.save(sceneId, next, options)
-  let path = vault.scenePath(sceneId)
-  if path.isSome: history.claim(sceneId, path.get)
-  %*{"restored": snapId, "elements": next["elements"].len}

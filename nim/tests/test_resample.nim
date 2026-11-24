@@ -1,8 +1,6 @@
 import std/[json, unittest]
 import ../core/resample
-
-proc checkJson(actual: JsonNode; expected: string) =
-  check parseJson($actual) == parseJson(expected)
+import ./test_helpers
 
 proc point(x, y: float): JsonNode =
   result = newJArray()

@@ -4,7 +4,7 @@ const ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 
 var idRng: Rand
 
-proc seedRng*(seed: int64) =
+proc seedRng(seed: int64) =
   idRng = initRand(seed)
 
 proc seedFromEntropy() =

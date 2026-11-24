@@ -229,7 +229,7 @@ suite "sketchdex HTTP app":
     })
     checkJsonError(stale, 409)
 
-  test "creates reads updates patches duplicates imports and deletes scenes":
+  test "the scene lifecycle works over HTTP":
     let createdResponse = jsonRequest(baseUrl, HttpPost, "/api/scenes", %*{"name": "HTTP scene"})
     check createdResponse.code == Http200
     let created = parseJson(createdResponse.body)
@@ -359,7 +359,7 @@ suite "sketchdex HTTP app":
     check body["result"]["serverInfo"]["name"].getStr == "sketchdex"
     check body["result"]["serverInfo"]["version"].getStr.len > 0
 
-  test "returns JSON 404 405 413 400 and 415 errors":
+  test "errors answer JSON with the right status":
     checkJsonError(request(baseUrl, HttpGet, "/api/missing"), 404)
     let notAllowed = request(baseUrl, HttpPost, "/api/vault")
     checkJsonError(notAllowed, 405)

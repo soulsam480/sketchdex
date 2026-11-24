@@ -1,13 +1,9 @@
 import std/[os, unittest]
 import ../core/textmetrics
+import ./test_helpers
 
 const repoRoot = parentDir(parentDir(parentDir(currentSourcePath())))
 const metricsPath = repoRoot / "server" / "font-metrics.json"
-
-proc almostEqual(actual, expected: float): bool =
-  let scale = max(abs(actual), abs(expected))
-  if scale == 0.0: return actual == expected
-  abs(actual - expected) <= 1e-9 * scale
 
 proc checkMeasure(text: string; fontSize: float; fontFamily: float; width, height: float) =
   let measured = measureText(text, fontSize, fontFamily)
@@ -70,7 +66,7 @@ suite "textmetrics":
     check wrapText("one  two\nthree", 0.0, 20.0, 5.0) == "one  two\nthree"
     check wrapText("one  two\nthree", -10.0, 20.0, 5.0) == "one  two\nthree"
 
-  test "wrapping matches JavaScript for words long words and paragraphs":
+  test "wrapping matches JavaScript for words, long words and paragraphs":
     check wrapText("one two three four", 70.0, 20.0, 5.0) == "one\ntwo\nthree\nfour"
     check wrapText("supercalifragilistic", 55.0, 20.0, 5.0) == "super\ncalifr\nagilis\ntic"
     check wrapText("one two\nthree four", 60.0, 20.0, 5.0) == "one\ntwo\nthree\nfour"

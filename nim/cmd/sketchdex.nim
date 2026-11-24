@@ -48,6 +48,8 @@ proc expandHome(path: string): string =
   else:
     path
 
+const DefaultPort = 5173
+
 proc parsePort(value: string): int =
   if value.len == 0:
     usageError("--port requires a number")
@@ -76,7 +78,7 @@ proc optionValue(arguments: seq[string]; index: var int; name: string): string =
 
 proc parseOptions(arguments: seq[string]): Options =
   result.command = cmdMcp
-  result.port = 5173
+  result.port = DefaultPort
   result.maxBodyBytes = DefaultMaxBodyBytes
   var positional: seq[string]
   var seenPort, seenVault, seenAssets, seenBody = false
@@ -267,7 +269,7 @@ proc startSidecar(options: Options): Process =
       $options.port)
     return nil
   var arguments = @["app"]
-  var url = "http://127.0.0.1:5173"
+  var url = "http://127.0.0.1:" & $DefaultPort
   if options.port > 0:
     arguments.add("--port")
     arguments.add($options.port)

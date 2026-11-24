@@ -75,14 +75,6 @@ for entry in [
 ]:
   namedColors[entry[0]] = entry[1]
 
-proc numberNode(value: float): JsonNode =
-  if value.classify in {fcNan, fcInf, fcNegInf}: return newJNull()
-  if value == 0.0: return newJInt(0)
-  if value == floor(value) and value >= -9_223_372_036_854_775_808.0 and
-      value < 9_223_372_036_854_775_808.0:
-    return newJInt(int64(value))
-  newJFloat(value)
-
 proc jsHypot2(x, y: float): float =
   let ax = abs(x)
   let ay = abs(y)

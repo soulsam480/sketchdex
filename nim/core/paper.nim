@@ -37,8 +37,10 @@ proc luminance*(color: string): float =
     0.7152 * linear(channel(long, 3)) +
     0.0722 * linear(channel(long, 5))
 
+const DarkPaperLuminance = 0.4
+
 proc isDarkPaper*(color: string): bool =
-  luminance(color) < 0.4
+  luminance(color) < DarkPaperLuminance
 
 proc inkFor*(paper: string): string =
   if isDarkPaper(paper): INK_ON_DARK else: INK_ON_LIGHT

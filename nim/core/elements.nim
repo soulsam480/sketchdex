@@ -60,22 +60,11 @@ proc coalesce(first, second: JsonNode): JsonNode =
 proc nullishString(value: JsonNode): string =
   if isNullish(value): "" else: jsString(value)
 
-proc numberNode(value: float): JsonNode =
-  if value.classify in {fcNan, fcInf, fcNegInf}: return newJNull()
-  if value == 0.0: return newJInt(0)
-  if value == floor(value) and value >= -9_223_372_036_854_775_808.0 and
-      value < 9_223_372_036_854_775_808.0:
-    return newJInt(int64(value))
-  newJFloat(value)
-
 proc finiteNumberNode(value: JsonNode; fallback: float): JsonNode =
   if value.isFiniteNumber:
     if value.kind == JInt: return copyNode(value)
     return newJFloat(value.getFloat)
   numberNode(fallback)
-
-proc arrayValue(values: JsonNode; index: int): JsonNode =
-  if values.isArr and index >= 0 and index < values.len: values[index] else: nil
 
 proc parseJsNumberString(text: string): float =
   let value = text.strip()
@@ -359,13 +348,13 @@ proc base(spec: JsonNode; index, ink: string; now: int64): JsonNode =
     else: %index
 
 proc metricFontFamily(value: JsonNode): float =
-  let key = jsString(coalesce(value, %5.0))
+  let key = jsString(coalesce(value, %DEFAULT_FONT_FAMILY))
   let number = parseJsNumberString(key)
   if jsNumberString(number) == key: number else: NaN
 
 proc textFields(spec, container: JsonNode): JsonNode =
-  let fontSize = floatOr(spec.field("fontSize"), 20.0)
-  let fontFamily = floatOr(spec.field("fontFamily"), 5.0)
+  let fontSize = floatOr(spec.field("fontSize"), DEFAULT_FONT_SIZE)
+  let fontFamily = floatOr(spec.field("fontFamily"), DEFAULT_FONT_FAMILY)
   let original = nullishString(spec.field("text"))
   let containerId =
     if isNullish(container): newJNull()
@@ -683,7 +672,7 @@ proc patchElement(element, patch: JsonNode; now: int64): JsonNode =
   if element.field("type").stringOr("") == "text" and retext:
     let original = nullishString(coalesce(patch.field("text"),
       coalesce(element.field("originalText"), element.field("text"))))
-    let fontSize = jsToNumber(coalesce(result.field("fontSize"), %20.0))
+    let fontSize = jsToNumber(coalesce(result.field("fontSize"), %DEFAULT_FONT_SIZE))
     let fontFamily = metricFontFamily(result.field("fontFamily"))
 
     let patchWrap = patch.field("wrap")

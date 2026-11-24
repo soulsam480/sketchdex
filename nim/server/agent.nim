@@ -8,8 +8,6 @@ type
   AgentError* = object of CatchableError
     status*: int
 
-  BeforeSaveHook* = proc(sceneId, revision: string; payload: JsonNode)
-
   LastKnownState = object
     elements, appState: JsonNode
 
@@ -28,8 +26,6 @@ type
     library*: LibraryStore
     lastKnown: OrderedTable[string, LastKnownState]
     sceneCache: OrderedTable[string, CachedScene]
-    beforeSave*: BeforeSaveHook
-    vaultReadCount*: int
 
 const
   LastKnownMax = 5
@@ -49,14 +45,6 @@ proc newAgentApi*(vaultPath = ""): AgentApi =
 
 proc isNullish(value: JsonNode): bool =
   value.isNil or value.kind == JNull
-
-proc numberNode(value: float): JsonNode =
-  if value.classify in {fcNan, fcInf, fcNegInf}: return newJNull()
-  if value == 0.0: return newJInt(0)
-  if value == floor(value) and value >= -9_223_372_036_854_775_808.0 and
-      value < 9_223_372_036_854_775_808.0:
-    return newJInt(int64(value))
-  newJFloat(value)
 
 proc toNumber(value: JsonNode): float =
   if value.isNil: return NaN
@@ -266,7 +254,6 @@ proc readPayload(api: AgentApi; sceneId: string): JsonNode =
       api.sceneCache.del(sceneId)
       api.sceneCache[sceneId] = cached
       return cached.payload
-  inc api.vaultReadCount
   let payload = api.vault.read(sceneId)
   let cachedRevision =
     if revision.isSome: revision.get else: payload.field("rev").stringOr("")
@@ -409,7 +396,6 @@ proc mutate(api: AgentApi; idOrName, label: string;
     let files = if isNullish(payload.field("files")): newJObject() else: payload["files"]
     let saved = %*{"elements": next.elements, "appState": appState, "files": files}
     let revision = payload.field("rev").stringOr("")
-    if api.beforeSave != nil: api.beforeSave(sceneId, revision, saved)
     var options = SaveOptions(touch: true, ifRev: some(revision))
     try:
       discard api.vault.save(sceneId, saved, options)

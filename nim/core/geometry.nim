@@ -1,6 +1,7 @@
 import std/[json, math]
 
 import ./jsvalue
+import ./resample
 
 const
   TAU = math.PI * 2.0
@@ -24,14 +25,6 @@ type
   WarningSink = ref object
     messages: seq[string]
 
-proc numberNode(value: float): JsonNode =
-  if value.classify in {fcNan, fcInf, fcNegInf}: return newJNull()
-  if value == 0.0: return newJInt(0)
-  if value == floor(value) and value >= -9_223_372_036_854_775_808.0 and
-      value < 9_223_372_036_854_775_808.0:
-    return newJInt(int64(value))
-  newJFloat(value)
-
 proc jsHypot2(x, y: float): float =
   let ax = abs(x)
   let ay = abs(y)
@@ -53,9 +46,6 @@ proc outputPoint(x, y: float): JsonNode =
   result = newJArray()
   result.add(numberNode(x))
   result.add(numberNode(y))
-
-proc arrayValue(point: JsonNode; index: int): JsonNode =
-  if point.isArr and index >= 0 and index < point.len: point[index] else: nil
 
 proc deleteKey(target: JsonNode; key: string) =
   if target.hasKey(key): target.delete(key)
@@ -79,11 +69,6 @@ proc pointBounds*(points: JsonNode): tuple[minX, minY, maxX, maxY: float] =
         if py > maxY: maxY = py
   if minX == Inf: return (0.0, 0.0, 0.0, 0.0)
   (minX, minY, maxX, maxY)
-
-proc capped(value: int; maximum: int; what: string; warn: WarnProc): int =
-  if value <= maximum: return value
-  warn(what & " " & $value & " capped at " & $maximum)
-  maximum
 
 proc roundedCapped(value: float; minimum, maximum: int; what: string;
     warn: WarnProc): int =
@@ -140,7 +125,7 @@ proc resampleCurve(input: seq[Point]): seq[Point] =
       points[i].y - points[i - 1].y)
   if total == 0.0: return points
 
-  let count = max(if closed: 6 else: 2, jsRoundInt(total / 18.0))
+  let count = max(if closed: 6 else: 2, jsRoundInt(total / SKETCH_STEP))
   if count >= points.len - 1: return points
 
   let target = total / float(count)

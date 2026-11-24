@@ -203,7 +203,7 @@ suite "MCP JSON-RPC":
     check handleMcpRequest(
       "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":0,\"message\":\"x\"}}") == ""
 
-  test "unknown methods use the Node message and code":
+  test "unknown methods answer Method not found":
     let response = rpc(request(newJInt(9), "unknown/method"))
     check errorCode(response) == MethodNotFoundCode
     check response["error"]["message"].getStr == "Method not found"

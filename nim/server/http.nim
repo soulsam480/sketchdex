@@ -445,7 +445,8 @@ proc statusOf(error: ref CatchableError): int =
     400
   elif error of ValueError:
     let message = error.msg
-    if message == "bad id" or message.startsWith("label is required"):
+    if message == "bad id" or message == "bad scene id" or
+        message.startsWith("label is required"):
       400
     elif message.startsWith("no scene matching"):
       404

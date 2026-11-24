@@ -19,7 +19,6 @@ type
     scenesDir: string
     libraryPath: string
     callback: WatchCallback
-    recent: Table[string, string]
     mutex: Lock
     stopped: Atomic[bool]
 
@@ -47,18 +46,8 @@ proc newWatcher*(vault: Vault; callback: WatchCallback): Watcher =
   Watcher(state: WatcherState(
     scenesDir: vault.scenesDir,
     libraryPath: vault.root / LibraryFileName,
-    callback: callback,
-    recent: initTable[string, string]()
+    callback: callback
   ))
-
-proc noteWrite*(watcher: var Watcher; sceneId, rev: string) =
-  watcher.state.mutex.withLock:
-    watcher.state.recent[sceneId] = rev
-
-proc isNoted(watcher: WatcherState; sceneId, rev: string): bool =
-  watcher.mutex.withLock:
-    result = watcher.recent.getOrDefault(sceneId) == rev
-    if result: watcher.recent.del(sceneId)
 
 proc scan(state: WatcherState; seen: var Table[string, Option[string]];
     pending: var Table[string, PendingChange]; initialized: bool) =
@@ -160,11 +149,6 @@ proc watchLoop(state: WatcherState) {.thread, gcsafe.} =
     for sceneId in ready:
       let change = pending.getOrDefault(sceneId)
       pending.del(sceneId)
-      if change.kind == pendingScene and isNoted(state, sceneId, change.rev):
-        continue
-      if change.kind == pendingRemoved:
-        state.mutex.withLock:
-          state.recent.del(sceneId)
       let event = WatchChange(
         kind: if change.kind == pendingScene: changeScene else: changeRemoved,
         sceneId: sceneId,

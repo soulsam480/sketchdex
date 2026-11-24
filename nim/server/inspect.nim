@@ -14,14 +14,6 @@ type
     element: JsonNode
     id: string
 
-proc numberNode(value: float): JsonNode =
-  if value.classify in {fcNan, fcInf, fcNegInf}: return newJNull()
-  if value == 0.0: return newJInt(0)
-  if value == floor(value) and value >= -9_223_372_036_854_775_808.0 and
-      value < 9_223_372_036_854_775_808.0:
-    return newJInt(int64(value))
-  newJFloat(value)
-
 proc parseJsNumberString(value: string): float =
   let text = value.strip()
   if text.len == 0: return 0.0

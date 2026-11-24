@@ -2,7 +2,9 @@ import std/[json, os, strutils, tables, math, unicode]
 import ./jsvalue
 
 const LINE_HEIGHT* = 1.25
-const BOUND_TEXT_PADDING* = 5.0
+const BOUND_TEXT_PADDING = 5.0
+const DEFAULT_FONT_SIZE* = 20.0
+const DEFAULT_FONT_FAMILY* = 5.0
 const METRICS_PATH_ENV* = "SKETCHDEX_METRICS"
 
 const NARROW = {'i', 'l', 'j', 't', 'f', 'r', 'I', '|', '!', '.', ',', ';', ':', '\'', '`', '(', ')', '[', ']', '{', '}'}
@@ -43,7 +45,7 @@ proc fontFactor(fontFamily: float): float =
   if fontFamily == 1.0: 0.53
   elif fontFamily == 2.0: 0.50
   elif fontFamily == 3.0: 0.60
-  elif fontFamily == 5.0: 0.51
+  elif fontFamily == DEFAULT_FONT_FAMILY: 0.51
   elif fontFamily == 6.0: 0.50
   elif fontFamily == 7.0: 0.55
   elif fontFamily == 8.0: 0.53
@@ -68,10 +70,6 @@ proc loadMetrics*(path: string): int =
     return 0
   loadMetricsFromText(readFile(path))
 
-proc loadMetricsFromEnv*(): int =
-  let path = getEnv(METRICS_PATH_ENV)
-  if path.len == 0: 0 else: loadMetrics(path)
-
 proc widthScale(fontFamily: float): float =
   fontFactor(fontFamily) / referenceMean
 
@@ -93,14 +91,14 @@ proc lineWidth(line: string; fontSize: float; fontFamily: float): float =
     run += glyphAdvance(ch, fontFamily)
   run * fontSize
 
-proc measureText*(text: string; fontSize: float; fontFamily = 5.0): tuple[width, height: float] =
+proc measureText*(text: string; fontSize: float; fontFamily = DEFAULT_FONT_FAMILY): tuple[width, height: float] =
   var width = 0.0
   let lines = text.split('\n')
   for line in lines:
     width = max(width, lineWidth(line, fontSize, fontFamily))
   (max(width, fontSize * 0.5), float(lines.len) * fontSize * LINE_HEIGHT)
 
-proc wrapText*(text: string; maxWidth: float; fontSize: float; fontFamily = 5.0): string =
+proc wrapText*(text: string; maxWidth: float; fontSize: float; fontFamily = DEFAULT_FONT_FAMILY): string =
   if not (maxWidth > 0.0): return text
   var outputLines: seq[string]
 

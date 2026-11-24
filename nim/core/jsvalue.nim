@@ -29,6 +29,17 @@ proc intOr*(n: JsonNode; fallback: int): int =
   if not n.isFiniteNumber: return fallback
   if n.kind == JInt: n.getInt else: int(n.getFloat)
 
+proc arrayValue*(values: JsonNode; index: int): JsonNode =
+  if values.isArr and index >= 0 and index < values.len: values[index] else: nil
+
+proc numberNode*(value: float): JsonNode =
+  if value.classify in {fcNan, fcInf, fcNegInf}: return newJNull()
+  if value == 0.0: return newJInt(0)
+  if value == floor(value) and value >= -9_223_372_036_854_775_808.0 and
+      value < 9_223_372_036_854_775_808.0:
+    return newJInt(int64(value))
+  newJFloat(value)
+
 proc stringOr*(n: JsonNode; fallback: string): string =
   if n.isNil or n.kind != JString: fallback else: n.getStr
 

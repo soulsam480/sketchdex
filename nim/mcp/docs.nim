@@ -27,18 +27,12 @@ let TOPICS* = @[
   DocTopic(name: "troubleshooting", file: some("docs/troubleshooting.md"), summary: "Tools not showing up, npx on Windows, no browser found, slow renders, broken installs, refused writes.", content: TroubleshootingContent),
 ]
 
-proc listTopics*(): seq[string] =
+proc listTopics(): seq[string] =
   for topic in TOPICS:
     result.add(topic.name)
 
-proc resourceUri*(name: string): string =
+proc resourceUri(name: string): string =
   "sketchdex://docs/" & name
-
-let RESOURCE_URIS* = block:
-  var uris: seq[string]
-  for topic in TOPICS:
-    uris.add(resourceUri(topic.name))
-  uris
 
 let RESOURCES* = block:
   var resources = newJArray()
