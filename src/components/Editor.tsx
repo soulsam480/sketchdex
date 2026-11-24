@@ -573,6 +573,26 @@ export default function Editor({
           if (parent && !parent.isDeleted) return parent;
           continue;
         }
+        // a bare text sitting on a shape is its label in everything but the
+        // data: commenting should land on the shape
+        if (element.type === "text") {
+          const centreX = element.x + width / 2;
+          const centreY = element.y + height / 2;
+          for (let below = index - 1; below >= 0; below -= 1) {
+            const host = elements[below];
+            if (host.isDeleted || host.type in ["text", "frame"]) continue;
+            const hostWidth = Math.max(host.width ?? 0, 0);
+            const hostHeight = Math.max(host.height ?? 0, 0);
+            if (
+              centreX >= host.x &&
+              centreX <= host.x + hostWidth &&
+              centreY >= host.y &&
+              centreY <= host.y + hostHeight
+            ) {
+              return host;
+            }
+          }
+        }
         return element;
       }
       return null;
@@ -583,29 +603,45 @@ export default function Editor({
   const insidePopover = (target: EventTarget | null) =>
     target instanceof Element && target.closest("[data-comment-popover]") !== null;
 
-  const beginCommentPress = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!commentMode || event.button !== 0 || insidePopover(event.target)) return;
-    event.stopPropagation();
-    pressAt.current = { x: event.clientX, y: event.clientY };
-  };
+  const canvasHost = useRef<HTMLDivElement>(null);
 
-  const endCommentPress = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!commentMode || !pressAt.current || insidePopover(event.target)) return;
-    event.stopPropagation();
-    const start = pressAt.current;
-    pressAt.current = null;
-    // a drag is a pan attempt, not a click on a shape
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) return;
-    const element = elementAt(event.clientX, event.clientY, event.currentTarget);
-    if (!element) {
-      setPopover(null);
-      return;
-    }
-    setPopover({
-      element: describeElement(element),
-      point: { x: event.clientX, y: event.clientY },
-    });
-  };
+  /**
+   * Native capture listeners, not React props: the canvas is Excalidraw's own
+   * DOM, and a click swallowed here has to be swallowed before Excalidraw sees
+   * it or the mode would move and select things.
+   */
+  useEffect(() => {
+    const node = canvasHost.current;
+    if (!node || !commentMode) return;
+    const onDown = (event: PointerEvent) => {
+      if (event.button !== 0 || insidePopover(event.target)) return;
+      event.stopPropagation();
+      pressAt.current = { x: event.clientX, y: event.clientY };
+    };
+    const onUp = (event: PointerEvent) => {
+      if (!pressAt.current || insidePopover(event.target)) return;
+      event.stopPropagation();
+      const start = pressAt.current;
+      pressAt.current = null;
+      // a drag is a pan attempt, not a click on a shape
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) return;
+      const element = elementAt(event.clientX, event.clientY, node);
+      if (!element) {
+        setPopover(null);
+        return;
+      }
+      setPopover({
+        element: describeElement(element),
+        point: { x: event.clientX, y: event.clientY },
+      });
+    };
+    node.addEventListener("pointerdown", onDown, true);
+    node.addEventListener("pointerup", onUp, true);
+    return () => {
+      node.removeEventListener("pointerdown", onDown, true);
+      node.removeEventListener("pointerup", onUp, true);
+    };
+  }, [commentMode, elementAt, describeElement]);
 
   useEffect(() => {
     if (!commentMode) return;
@@ -831,14 +867,11 @@ export default function Editor({
 
       <div className="flex min-h-0 flex-1">
       <div
+        ref={canvasHost}
         className={`excalidraw-wrapper relative min-w-0 flex-1 ${
           commentMode ? "cursor-crosshair" : ""
         }`}
-        onPointerDownCapture={(event) => {
-          markInteracted();
-          beginCommentPress(event);
-        }}
-        onPointerUpCapture={endCommentPress}
+        onPointerDownCapture={markInteracted}
         onWheelCapture={markInteracted}
         onKeyDownCapture={markInteracted}
       >
