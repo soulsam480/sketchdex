@@ -96,26 +96,6 @@
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/*  ELECTRON SHELL                                            */
-/* ═══════════════════════════════════════════════════════════ */
-
-/* hiddenInset title bar: leave room for the traffic lights, and let the
-   header itself drag the window while its controls stay clickable */
-[data-electron] .titlebar-inset {
-  padding-left: 76px;
-}
-
-[data-electron] .app-drag {
-  -webkit-app-region: drag;
-}
-
-[data-electron] .app-drag button,
-[data-electron] .app-drag input,
-[data-electron] .app-drag a {
-  -webkit-app-region: no-drag;
-}
-
-/* ═══════════════════════════════════════════════════════════ */
 /*  TOOLBAR RETUNE                                            */
 /* ═══════════════════════════════════════════════════════════ */
 

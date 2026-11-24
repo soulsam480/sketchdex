@@ -5,35 +5,24 @@
 - A session that was open when the server was added does not see it.
   Start a new session, or restart the app for Claude Desktop.
 - Check the registration: `claude mcp list`, `codex mcp list`, or open the
-  client's MCP settings. The command should be `npx` with args `-y sketchdex`.
-- Run `npx -y sketchdex --version` in a terminal. If that fails, the problem
-  is Node or npm, not the client. Node 20 or newer is required
-  (`node --version`).
+  client's MCP settings. The command should be `sketchdex` with args `mcp`.
+- Run `sketchdex --version` in a terminal. If that fails, the client cannot
+  find the binary. Use an absolute path.
 
-## "spawn npx ENOENT" or "command not found" (Windows)
+## "command not found" or permission denied
 
-Some clients launch the server without a shell, and on Windows `npx` is a
-`.cmd` script that needs one. Wrap it:
+Use the absolute path to the binary in the client config. On macOS and Linux
+make sure it is executable (`chmod +x /path/to/sketchdex`). On Windows use the
+`.exe` path. Clients that launch without a shell need the full path.
 
-```json
-{
-  "command": "cmd",
-  "args": ["/c", "npx", "-y", "sketchdex"]
-}
-```
+## render_scene says SKETCHDEX_BROWSER is missing
 
-On macOS and Linux the same error usually means Node was installed through
-a version manager the client does not load. Use the full path to `npx`
-(`which npx`) as the command.
+Set `SKETCHDEX_BROWSER` to a Chromium-based browser binary in the server's
+environment before it starts. There is no discovery:
 
-## render_scene says no browser was found
-
-It needs Chrome, Chromium, Edge or Brave. Install one, or point
-`SKETCHDEX_BROWSER` at the browser binary in the server's `env`:
-
-- macOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+- macOS: `/Applications/Chromium.app/Contents/MacOS/Chromium`
 - Windows: `C:\Program Files\Google\Chrome\Application\chrome.exe`
-- Linux: `/usr/bin/google-chrome` or `/usr/bin/chromium`
+- Linux: `/usr/bin/chromium` or `/usr/bin/google-chrome`
 
 Every other tool works without a browser; `check_scene` finds layout
 problems by geometry.
@@ -45,18 +34,11 @@ that about a second and a half. A call that takes longer than two minutes
 is answered with an error rather than hanging. If every render is slow,
 `SKETCHDEX_BROWSER` may be pointing at something that is not a Chromium.
 
-## "worker failed to start" or "could not load its own source"
+## The binary will not start
 
-The installed package is damaged, usually a broken npx cache. Clear it and
-try again:
-
-```bash
-npx clear-npx-cache
-npx -y sketchdex --version
-```
-
-In a git checkout the same message means a source file was caught mid-save;
-it retries on its own.
+Reinstall the package or download the release asset again. In a checkout,
+run `npm run build:server` after changing Nim source. The native server does
+not hot-reload.
 
 ## A write was refused for a missing label
 
@@ -66,7 +48,7 @@ whether to keep or revert the change. Add one and call again.
 
 ## The agent and the app see different scenes
 
-They are using different vaults. `npx sketchdex vault` prints the default;
+They are using different vaults. `sketchdex vault` prints the default;
 if the server was given `--vault` or `SKETCHDEX_VAULT`, start the app with
 the same flag. See the `vault` topic.
 
@@ -78,10 +60,10 @@ topic.
 
 ## Port 5173 is busy
 
-`npx sketchdex app` moves to the next free port and prints the URL. Pass
+`sketchdex app` moves to the next free port and prints the URL. Pass
 `--port` to choose one.
 
 ## Anything else
 
-`npx -y sketchdex docs` prints this manual. The source and issue tracker are
+`sketchdex docs` prints this manual. The source and issue tracker are
 at https://github.com/lucasr1b/sketchdex.

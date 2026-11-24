@@ -1,14 +1,13 @@
 # Rendering
 
 `render_scene` draws the scene exactly as Excalidraw exports it and returns a
-PNG, so an agent can look at its own work. It needs a Chromium-based browser
-on the machine and finds one on its own: Chrome, Chromium, Edge or Brave, in
-the usual install locations on macOS, Windows and Linux. Nothing is
-downloaded. In a git checkout with `electron` installed, Electron is the
-fallback.
+PNG, so an agent can look at its own work. Set `SKETCHDEX_BROWSER` to the path
+of a Chromium-based browser binary before starting the server. There is no
+discovery and nothing is downloaded.
 
-`SKETCHDEX_BROWSER=/path/to/binary` in the server's environment overrides
-the search. Use it when the browser is somewhere unusual, or to pick one.
+```sh
+SKETCHDEX_BROWSER=/Applications/Chromium.app/Contents/MacOS/Chromium sketchdex app
+```
 
 ## What to expect
 

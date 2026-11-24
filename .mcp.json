@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "sketchdex": {
-      "command": "node",
-      "args": ["mcp/server.js"]
+      "command": "./nim/bin/sketchdex",
+      "args": ["mcp"]
     }
   }
 }

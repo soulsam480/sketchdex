@@ -1,35 +1,44 @@
 # Install
 
-Sketchdex is a stdio MCP server published on npm as `sketchdex`. Every client
-below runs the same command: `npx -y sketchdex`. Nothing is installed globally
-and there is no account.
+Sketchdex is a native stdio MCP server. Every client below runs the same
+command: `sketchdex mcp`. The binary owns the vault, the MCP transport, the
+app, and rendering orchestration.
 
-Needs Node 20 or newer. Rendering (`render_scene`) needs a Chromium-based
-browser on the machine: Chrome, Chromium, Edge or Brave. Everything else works
-without one.
+There are two ways to get it:
+
+1. Download the release binary for your platform from
+   `https://github.com/soulsam480/sketchdex/releases`, make it executable, and
+   put it on `PATH`.
+2. Install the npm package, which ships the same binary:
+   `npm install -g sketchdex`.
+
+`npx -y sketchdex mcp` also works, but npm is the parent process. Prefer the
+direct binary when you want no Node process at all.
+
+Set `SKETCHDEX_BROWSER` to a Chromium-based browser binary before using
+`render_scene`. There is no discovery. Everything else works without a
+browser.
 
 ## Claude Code
 
 ```bash
-claude mcp add --scope user sketchdex -- npx -y sketchdex
+claude mcp add --scope user sketchdex -- sketchdex mcp
 ```
 
-`--scope user` registers it for every project. Check with `claude mcp list`,
-or `/mcp` inside a session. A session that was already open needs restarting
-before the tools show up.
+Use the absolute binary path if `sketchdex` is not on the client's `PATH`.
 
 ## Codex
 
 ```bash
-codex mcp add sketchdex -- npx -y sketchdex
+codex mcp add sketchdex -- sketchdex mcp
 ```
 
 Or in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.sketchdex]
-command = "npx"
-args = ["-y", "sketchdex"]
+command = "sketchdex"
+args = ["mcp"]
 ```
 
 ## Cursor
@@ -40,31 +49,28 @@ Global: `~/.cursor/mcp.json`. Per project: `.cursor/mcp.json` in the repo.
 {
   "mcpServers": {
     "sketchdex": {
-      "command": "npx",
-      "args": ["-y", "sketchdex"]
+      "command": "sketchdex",
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-Cursor also opens a one-click install from this link:
-`cursor://anysphere.cursor-deeplink/mcp/install?name=sketchdex&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInNrZXRjaGRleCJdfQ==`
-
 ## VS Code (Copilot agent mode)
 
 ```bash
-code --add-mcp '{"name":"sketchdex","command":"npx","args":["-y","sketchdex"]}'
+code --add-mcp '{"name":"sketchdex","command":"sketchdex","args":["mcp"]}'
 ```
 
-Or in `.vscode/mcp.json` (note the key is `servers`, not `mcpServers`):
+Or in `.vscode/mcp.json` (the key is `servers`, not `mcpServers`):
 
 ```json
 {
   "servers": {
     "sketchdex": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "sketchdex"]
+      "command": "sketchdex",
+      "args": ["mcp"]
     }
   }
 }
@@ -81,8 +87,8 @@ Edit `claude_desktop_config.json` and restart the app.
 {
   "mcpServers": {
     "sketchdex": {
-      "command": "npx",
-      "args": ["-y", "sketchdex"]
+      "command": "sketchdex",
+      "args": ["mcp"]
     }
   }
 }
@@ -95,29 +101,27 @@ Edit `claude_desktop_config.json` and restart the app.
 ## Gemini CLI
 
 ```bash
-gemini mcp add sketchdex npx -y sketchdex
+gemini mcp add sketchdex sketchdex mcp
 ```
 
 ## Anything else
 
-Any client that can launch a stdio MCP server: command `npx`, arguments
-`-y sketchdex`. If the client takes a single command string, use
-`npx -y sketchdex`.
+Any client that can launch a stdio MCP server: command `sketchdex`, arguments
+`mcp`. If the client takes a single command string, use `sketchdex mcp`.
 
 ## Options
 
-Add these after the package name in `args`, so they work in every client:
+Add these after `mcp`:
 
 - `--vault /path/to/folder` stores scenes somewhere other than
   `~/Documents/sketchdex`. An iCloud or Dropbox folder is fine.
 
-Or set the environment variables `SKETCHDEX_VAULT` and `SKETCHDEX_BROWSER`
-in the server's `env` block. See the `vault` and `rendering` topics.
+Set `SKETCHDEX_VAULT`, `SKETCHDEX_BROWSER`, and `SKETCHDEX_METRICS` in the
+client's `env` block when you prefer environment configuration.
 
 ## Check it works
 
 In a session, ask: *draw me how the event loop works using sketchdex*. The
-agent should call `create_scene`, then `render_scene`, and show a PNG. To
-see and edit the result, run `npx sketchdex app`: it opens the library in
-the browser, and the new scene is the first card. The `app` topic covers
-the interface.
+agent should call `create_scene`, then `render_scene`, and show a PNG. To see
+and edit the result, run `sketchdex app`: it opens the library in the browser,
+and the new scene is the first card. The `app` topic covers the interface.

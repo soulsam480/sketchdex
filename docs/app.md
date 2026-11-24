@@ -7,7 +7,7 @@ same package as the MCP server, so nothing extra is installed.
 ## Opening it
 
 ```bash
-npx sketchdex app
+sketchdex app
 ```
 
 Starts a local server, prints its URL (`http://localhost:5173` unless that
@@ -20,7 +20,7 @@ running; `Ctrl C` stops it. Flags:
 
 A scene has a stable address, `http://localhost:5173/#/s/<scene id>`, where
 the id is the one `list_scenes` and `create_scene` return. After drawing
-something, tell the person to run `npx sketchdex app` if it is not already
+something, tell the person to run `sketchdex app` if it is not already
 open, or give them that link if it is.
 
 The page notices agent writes as they happen, so it can stay open while

@@ -23,15 +23,17 @@ dist-ssr
 *.sln
 *.sw?
 
-# Electron build output
-dist-electron
-
 # Nim core build output
 nim/bin/
+
+# Native CLI build output
+bin/sketchdex
+bin/sketchdex.exe
 
 # Nim compiled test binaries
 nim/tests/test_*
 !nim/tests/test_*.nim
+!nim/tests/test_*.test.mjs
 
 # npm pack output
 *.tgz

@@ -17,38 +17,41 @@ real thing. MIT.
 ## Install
 
 Needs Node 20 or newer. Rendering (`render_scene`) needs a Chromium-based
-browser on the machine: Chrome, Chromium, Edge or Brave. Everything else works
-without one.
+browser and `SKETCHDEX_BROWSER` pointing at it. Everything else works without
+one.
 
 The quickest way is to let the agent you already have do it. Paste this into
 any agent that can run commands:
 
-> install the sketchdex mcp server for me. run `npx -y sketchdex docs install` for the steps.
+> install the sketchdex mcp server for me. run `sketchdex docs install` for the steps.
 
 Or by hand:
+
+Install the binary with `npm install -g sketchdex`, or download the release
+asset for your platform. The MCP command is `sketchdex mcp`.
 
 **Claude Code**
 
 ```bash
-claude mcp add --scope user sketchdex -- npx -y sketchdex
+claude mcp add --scope user sketchdex -- sketchdex mcp
 ```
 
 **Codex**
 
 ```bash
-codex mcp add sketchdex -- npx -y sketchdex
+codex mcp add sketchdex -- sketchdex mcp
 ```
 
 **Cursor**
 
-[Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=sketchdex&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInNrZXRjaGRleCJdfQ==), or in `~/.cursor/mcp.json`:
+In `~/.cursor/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "sketchdex": {
-      "command": "npx",
-      "args": ["-y", "sketchdex"]
+      "command": "sketchdex",
+      "args": ["mcp"]
     }
   }
 }
@@ -57,12 +60,12 @@ codex mcp add sketchdex -- npx -y sketchdex
 **VS Code**
 
 ```bash
-code --add-mcp '{"name":"sketchdex","command":"npx","args":["-y","sketchdex"]}'
+code --add-mcp '{"name":"sketchdex","command":"sketchdex","args":["mcp"]}'
 ```
 
 **Claude Desktop, Windsurf, Gemini CLI, anything else** takes the same
-`mcpServers` block as Cursor, or the command `npx -y sketchdex` as a stdio
-server. `npx -y sketchdex docs install` has the exact file for each.
+`mcpServers` block as Cursor, or the command `sketchdex mcp` as a stdio
+server. `sketchdex docs install` has the exact file for each.
 
 Then, in a session: *draw me how the event loop works using sketchdex*.
 
@@ -75,7 +78,7 @@ server's environment. An iCloud or Dropbox folder works.
 The manual ships inside the package so an agent can answer setup questions
 and fix problems without anyone reading a page:
 
-- `npx -y sketchdex docs [topic]` prints it (topics: `install`, `vault`,
+- `sketchdex docs [topic]` prints it (topics: `install`, `vault`,
   `app`, `rendering`, `tools`, `drawing`, `troubleshooting`, or `all`).
 - The `sketchdex_docs` tool returns the same text once the server is
   connected, and the server instructions tell the agent to use it for
@@ -85,7 +88,7 @@ and fix problems without anyone reading a page:
 ## The app
 
 ```bash
-npx sketchdex app
+sketchdex app
 ```
 
 Opens the library in your browser: a grid of scenes with live previews,
@@ -145,7 +148,7 @@ const api = createAgentApi(); // or createAgentApi("/path/to/vault")
 await api.describeScene("Brain Dump");
 ```
 
-Same implementation as the MCP and REST surfaces. Works with the app closed.
+The JavaScript implementation remains the oracle for differential tests. The npm CLI and MCP server run Nim.
 
 ## Development
 
@@ -155,20 +158,19 @@ cd sketchdex
 npm install          # also retunes Excalidraw's colour picker for dark paper
 npm run dev          # app + API + HTTP MCP on http://localhost:5173
 npm run build        # dist/, which the CLI and the render page need
-node bin/sketchdex.js app
+npm run build:server # native CLI at bin/sketchdex
+./bin/sketchdex app
 ```
 
-For an MCP client pointed at a checkout, use `node /path/to/sketchdex/mcp/server.js`
-as the command. In a checkout the server hot-reloads its worker when a file
-under `server/` or `mcp/` changes, so edits are live on the next tool call
-without restarting the client.
+For an MCP client pointed at a checkout, run `npm run build:server`, then use
+`/path/to/sketchdex/bin/sketchdex mcp` as the command. Rebuild after Nim source
+changes. The native server does not hot-reload.
 
 `npm run lint`, `npx tsc -p tsconfig.app.json --noEmit` and `npm test` before
 committing. The test packs the package, installs it into a clean project and
-drives it through a real MCP client, including a render; CI runs it on macOS,
-Linux and Windows.
+drives it through a real MCP client, including a render.
 [`AGENTS.md`](AGENTS.md) maps the codebase and the rules that must survive
-edits. There is also a macOS desktop shell: `npm run electron:dev`.
+edits.
 
 ## Notes
 
@@ -177,7 +179,7 @@ edits. There is also a macOS desktop shell: `npm run electron:dev`.
   colour is per scene (`viewBackgroundColor`).
 - The first render on a fresh install takes a few seconds while the browser
   starts; after that about a second and a half.
-- Set `SKETCHDEX_BROWSER=/path/to/browser` if the browser is somewhere unusual.
+- Set `SKETCHDEX_BROWSER=/path/to/chromium` before using `render_scene`. There is no browser discovery.
 - The server only answers requests whose Host is localhost and refuses
   cross-site writes, so a web page open in your browser cannot touch the
   vault. It still binds a plain local port: anything running as you on the

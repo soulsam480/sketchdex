@@ -1,13 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-// @ts-expect-error plain JS, runs in the vite process
-import { sketchdexStore } from "./server/middleware.js";
 
 export default defineConfig({
-  // sketchdexStore serves /api/* from the vault folder on disk
-  // (~/Documents/sketchdex, override with SKETCHDEX_VAULT)
-  plugins: [react(), tailwindcss(), sketchdexStore()],
+  plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": { target: process.env.SKETCHDEX_SERVER_ORIGIN ?? "http://127.0.0.1:5174", changeOrigin: true },
+      "/mcp": { target: process.env.SKETCHDEX_SERVER_ORIGIN ?? "http://127.0.0.1:5174", changeOrigin: true },
+    },
+  },
   build: {
     rollupOptions: {
       input: {

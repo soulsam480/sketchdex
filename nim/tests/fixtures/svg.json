@@ -1,0 +1,5466 @@
+[
+  {
+    "name": "empty document",
+    "input": "",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "no <svg> element found"
+    }
+  },
+  {
+    "name": "no svg element",
+    "input": "<g><path d='M0 0L1 1'/></g>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "no <svg> element found"
+    }
+  },
+  {
+    "name": "nothing drawable",
+    "input": "<svg/>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable found in the SVG"
+    }
+  },
+  {
+    "name": "nothing drawable with warning",
+    "input": "<svg><image href='x.png'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable was produced. an embedded <image> was skipped: this converts vector artwork to editable elements, and a raster has none"
+    }
+  },
+  {
+    "name": "line",
+    "input": "<svg><line x1='2' y1='3' x2='14' y2='9'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 6,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                12,
+                6
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 12,
+          "height": 6
+        },
+        "placed": {
+          "width": 12,
+          "height": 6
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "polyline",
+    "input": "<svg><polyline points='0,0 10,2 4,12 20,18 7'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 18,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                2
+              ],
+              [
+                4,
+                12
+              ],
+              [
+                20,
+                18
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 18
+        },
+        "placed": {
+          "width": 20,
+          "height": 18
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "polygon",
+    "input": "<svg><polygon points='0,0 10,2 4,12 20,18'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 18,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                2
+              ],
+              [
+                4,
+                12
+              ],
+              [
+                20,
+                18
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 18
+        },
+        "placed": {
+          "width": 20,
+          "height": 18
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "rect",
+    "input": "<svg><rect x='2' y='3' width='20' height='12'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 12,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 12
+        },
+        "placed": {
+          "width": 20,
+          "height": 12
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "rounded rect",
+    "input": "<svg><rect x='2' y='3' width='20' height='12' rx='4'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 12,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": {
+              "type": 3
+            },
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 12
+        },
+        "placed": {
+          "width": 20,
+          "height": 12
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "circle",
+    "input": "<svg><circle cx='20' cy='10' r='8'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "ellipse",
+            "x": -0.13621520252878483,
+            "y": -0.03412658963972337,
+            "width": 16,
+            "height": 16,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 15.863784797471215,
+          "height": 15.931746820720551
+        },
+        "placed": {
+          "width": 15.863784797471215,
+          "height": 15.931746820720551
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "ellipse",
+    "input": "<svg><ellipse cx='20' cy='10' rx='12' ry='5'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "ellipse",
+            "x": 0,
+            "y": -0.0364556295097298,
+            "width": 24,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 24,
+          "height": 9.92708874098054
+        },
+        "placed": {
+          "width": 24,
+          "height": 9.92708874098054
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "all basic shapes precise",
+    "input": "<svg><rect width='10' height='8'/><circle cx='20' cy='10' r='5'/><ellipse cx='40' cy='10' rx='8' ry='3'/><line x1='0' y1='20' x2='30' y2='20'/><polyline points='40,20 50,30 60,20'/><polygon points='70,20 80,30 90,20'/></svg>",
+    "options": {
+      "style": "precise",
+      "tolerance": 2
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 8,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                8
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 25,
+            "y": 10,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                -0.3806023374435661,
+                1.9134171618254499
+              ],
+              [
+                -1.4644660940672622,
+                3.5355339059327378
+              ],
+              [
+                -3.08658283817455,
+                4.619397662556434
+              ],
+              [
+                -5,
+                5
+              ],
+              [
+                -6.91341716182545,
+                4.619397662556434
+              ],
+              [
+                -8.535533905932738,
+                3.5355339059327378
+              ],
+              [
+                -9.619397662556434,
+                1.9134171618254499
+              ],
+              [
+                -10,
+                0
+              ],
+              [
+                -9.619397662556434,
+                -1.913417161825448
+              ],
+              [
+                -8.535533905932738,
+                -3.5355339059327378
+              ],
+              [
+                -6.91341716182545,
+                -4.619397662556432
+              ],
+              [
+                -5,
+                -5
+              ],
+              [
+                -3.08658283817455,
+                -4.619397662556433
+              ],
+              [
+                -1.4644660940672622,
+                -3.5355339059327386
+              ],
+              [
+                -0.38060233744356964,
+                -1.9134171618254516
+              ],
+              [
+                0,
+                -1.7763568394002505e-15
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 48,
+            "y": 10,
+            "width": 16,
+            "height": 5.956253244588325,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                -0.2324654605915839,
+                0.7179469928626734
+              ],
+              [
+                -0.9163517947743216,
+                1.3941695161313064
+              ],
+              [
+                -2.011914014631188,
+                1.989367974722386
+              ],
+              [
+                -3.4554820261507544,
+                2.46895159768097
+              ],
+              [
+                -5.1631609036597155,
+                2.805048728056244
+              ],
+              [
+                -7.035706557957418,
+                2.9781266222941625
+              ],
+              [
+                -8.964293442042582,
+                2.9781266222941625
+              ],
+              [
+                -10.836839096340285,
+                2.805048728056244
+              ],
+              [
+                -12.544517973849246,
+                2.46895159768097
+              ],
+              [
+                -13.988085985368812,
+                1.989367974722386
+              ],
+              [
+                -15.083648205225678,
+                1.3941695161313064
+              ],
+              [
+                -15.767534539408416,
+                0.7179469928626734
+              ],
+              [
+                -16,
+                0
+              ],
+              [
+                -15.767534539408416,
+                -0.7179469928626716
+              ],
+              [
+                -15.083648205225678,
+                -1.3941695161313046
+              ],
+              [
+                -13.988085985368812,
+                -1.989367974722386
+              ],
+              [
+                -12.544517973849246,
+                -2.4689515976809693
+              ],
+              [
+                -10.836839096340285,
+                -2.805048728056244
+              ],
+              [
+                -8.964293442042589,
+                -2.9781266222941625
+              ],
+              [
+                -7.035706557957411,
+                -2.9781266222941625
+              ],
+              [
+                -5.1631609036597155,
+                -2.805048728056244
+              ],
+              [
+                -3.4554820261507544,
+                -2.46895159768097
+              ],
+              [
+                -2.011914014631195,
+                -1.9893679747223878
+              ],
+              [
+                -0.9163517947743216,
+                -1.3941695161313046
+              ],
+              [
+                -0.2324654605915839,
+                -0.7179469928626734
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 20,
+            "width": 30,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                30,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 40,
+            "y": 20,
+            "width": 20,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                20,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 70,
+            "y": 20,
+            "width": 20,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                20,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 90,
+          "height": 30
+        },
+        "placed": {
+          "width": 90,
+          "height": 30
+        },
+        "shapes": 6
+      }
+    }
+  },
+  {
+    "name": "moveto implicit lineto",
+    "input": "<svg><path d='M2 3 8 3 8 9 2 3z'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 6,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                6,
+                0
+              ],
+              [
+                6,
+                6
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 6,
+          "height": 6
+        },
+        "placed": {
+          "width": 6,
+          "height": 6
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "relative moveto and lines",
+    "input": "<svg><path d='m10 10 l5 0 0 5 h-5 v-5 z'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 5,
+            "height": 5,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                5,
+                0
+              ],
+              [
+                5,
+                5
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 5,
+          "height": 5
+        },
+        "placed": {
+          "width": 5,
+          "height": 5
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "horizontal and vertical",
+    "input": "<svg><path d='M1 2H13V15h-4V6'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 13,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                12,
+                0
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                8,
+                13
+              ],
+              [
+                8,
+                4
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 12,
+          "height": 13
+        },
+        "placed": {
+          "width": 12,
+          "height": 13
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "cubic smooth cubic",
+    "input": "<svg><path d='M0 10 C0 0 10 0 10 10 S20 20 20 10'/></svg>",
+    "options": {
+      "tolerance": 1.5
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 7.5,
+            "width": 20,
+            "height": 15,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                6.661338147750939e-16
+              ],
+              [
+                20,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 15
+        },
+        "placed": {
+          "width": 20,
+          "height": 15
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "relative cubic smooth cubic",
+    "input": "<svg><path d='m0 10 c0-10 10-10 10 0 s10 10 10 0'/></svg>",
+    "options": {
+      "tolerance": 4
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 7.5,
+            "width": 20,
+            "height": 15,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                8.881784197001252e-16
+              ],
+              [
+                20,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 15
+        },
+        "placed": {
+          "width": 20,
+          "height": 15
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "quadratic smooth quadratic",
+    "input": "<svg><path d='M0 10 Q5 0 10 10 T20 10'/></svg>",
+    "options": {
+      "tolerance": 2
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 5,
+            "width": 20,
+            "height": 9.999999999999998,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                1.5528152561499864e-15
+              ],
+              [
+                20,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 9.999999999999998
+        },
+        "placed": {
+          "width": 20,
+          "height": 9.999999999999998
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "relative quadratic smooth quadratic",
+    "input": "<svg><path d='m0 10 q5-10 10 0 t10 0'/></svg>",
+    "options": {
+      "tolerance": 2
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 5,
+            "width": 20,
+            "height": 9.999999999999998,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                1.5528152561499864e-15
+              ],
+              [
+                20,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 9.999999999999998
+        },
+        "placed": {
+          "width": 20,
+          "height": 9.999999999999998
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "arcs every flag and rotation",
+    "input": "<svg><path d='M10 20 A8 5 0 0 1 30 20 A8 5 30 1 0 10 20 A8 5 0 1 1 30 20 A8 5 0 0 0 10 20'/></svg>",
+    "options": {
+      "tolerance": 2
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0.8290126130234192,
+            "y": 8.657827782995444,
+            "width": 20.82901261302342,
+            "height": 8.657827782995444,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                14.977280193537366,
+                -5.389918247718722
+              ],
+              [
+                12.745807493357617,
+                -6.860269186809886
+              ],
+              [
+                -0.7080060962650595,
+                -2.1986156313970433
+              ],
+              [
+                12.740901726771758,
+                -5.98013086062329
+              ],
+              [
+                14.977280193537323,
+                -5.389918247718738
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20.82901261302342,
+          "height": 8.657827782995444
+        },
+        "placed": {
+          "width": 20.82901261302342,
+          "height": 8.657827782995444
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "relative arcs glued flags",
+    "input": "<svg><path d='m10 20 a8 5 0 0110 0 a8 5 0 10-10 0z'/></svg>",
+    "options": {
+      "tolerance": 3
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 2.896039055251414,
+            "y": 8.903123748999,
+            "width": 15.792078110502828,
+            "height": 8.903123748999,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                6.700636418810317,
+                -0.9157541114656108
+              ],
+              [
+                12.450935192243408,
+                -2.2981183040251887
+              ],
+              [
+                9.99123506906902,
+                -7.781933783711579
+              ],
+              [
+                3.3002345877752175,
+                -8.714002090223037
+              ],
+              [
+                -2.4461675648853216,
+                -5.507627412400151
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 15.792078110502828,
+          "height": 8.903123748999
+        },
+        "placed": {
+          "width": 15.792078110502828,
+          "height": 8.903123748999
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "arc radius correction",
+    "input": "<svg><path d='M0 0A2 3 0 0 1 30 10'/></svg>",
+    "options": {
+      "tolerance": 1
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 18.04511602972753,
+            "width": 30.36581372653042,
+            "height": 28.045115965483838,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10.058772987113585,
+                -16.821168813248633
+              ],
+              [
+                26.822405956372158,
+                -9.718187433181717
+              ],
+              [
+                30.00000000951758,
+                9.999999935756307
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30.36581372653042,
+          "height": 28.045115965483838
+        },
+        "placed": {
+          "width": 30.36581372653042,
+          "height": 28.045115965483838
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "arc zero radius",
+    "input": "<svg><path d='M0 0A0 5 0 0 1 10 10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                10
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "arc coincident endpoints",
+    "input": "<svg><path d='M5 5A10 10 0 0 1 5 5L10 10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 5,
+            "height": 5,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                5,
+                5
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 5,
+          "height": 5
+        },
+        "placed": {
+          "width": 5,
+          "height": 5
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "closed subpaths and holes",
+    "input": "<svg><path fill='#123456' d='M0 0H40V40H0Z M10 10H30V30H10Z M35 35h3v3h-3z'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 40,
+            "height": 40,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                40,
+                0
+              ],
+              [
+                40,
+                40
+              ],
+              [
+                0,
+                40
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          },
+          {
+            "type": "line",
+            "x": 10,
+            "y": 10,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                0
+              ],
+              [
+                20,
+                20
+              ],
+              [
+                0,
+                20
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          },
+          {
+            "type": "line",
+            "x": 35,
+            "y": 35,
+            "width": 3,
+            "height": 3,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          }
+        ],
+        "warnings": [
+          "a compound path has inner rings that should be holes. Excalidraw has no even-odd fill, so they are filled over. Pass holeColor with the backdrop colour to punch them visually."
+        ],
+        "source": {
+          "width": 40,
+          "height": 40
+        },
+        "placed": {
+          "width": 40,
+          "height": 40
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "holes with backdrop",
+    "input": "<svg><path fill='#123456' d='M0 0H40V40H0Z M10 10H30V30H10Z'/></svg>",
+    "options": {
+      "holeColor": "#ffffff"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 40,
+            "height": 40,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                40,
+                0
+              ],
+              [
+                40,
+                40
+              ],
+              [
+                0,
+                40
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          },
+          {
+            "type": "line",
+            "x": 10,
+            "y": 10,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                0
+              ],
+              [
+                20,
+                20
+              ],
+              [
+                0,
+                20
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#ffffff",
+            "backgroundColor": "#ffffff",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          }
+        ],
+        "warnings": [
+          "compound paths had their inner rings painted in the supplied holeColor; Excalidraw has no true even-odd fill"
+        ],
+        "source": {
+          "width": 40,
+          "height": 40
+        },
+        "placed": {
+          "width": 40,
+          "height": 40
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "control reflection after noncurve",
+    "input": "<svg><path d='M0 0C5 0 5 5 10 5L20 5S25 10 30 5Q35 0 40 5L50 5T60 5'/></svg>",
+    "options": {
+      "tolerance": 2
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 60,
+            "height": 7.197265625,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                14.512107788618469,
+                5
+              ],
+              [
+                29.497666030671827,
+                5.386613054927967
+              ],
+              [
+                43.95613710691739,
+                5
+              ],
+              [
+                60,
+                5
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 60,
+          "height": 7.197265625
+        },
+        "placed": {
+          "width": 60,
+          "height": 7.197265625
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "close then continue",
+    "input": "<svg><path d='M0 0L10 0L10 10ZL20 20L30 30z'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 30,
+            "height": 30,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ],
+              [
+                30,
+                30
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30,
+          "height": 30
+        },
+        "placed": {
+          "width": 30,
+          "height": 30
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "repeated close",
+    "input": "<svg><path d='M0 0L10 0L10 10ZZL20 20'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 20
+        },
+        "placed": {
+          "width": 20,
+          "height": 20
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "scientific notation and compact signs",
+    "input": "<svg><path d='M1e1-2e1L.5.5L3.+4.-5.5-6.5'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 15.5,
+            "y": 0,
+            "width": 15.5,
+            "height": 24,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                -9.5,
+                20.5
+              ],
+              [
+                -7,
+                24
+              ],
+              [
+                -15.5,
+                13.5
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 15.5,
+          "height": 24
+        },
+        "placed": {
+          "width": 15.5,
+          "height": 24
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "malformed each command",
+    "input": "<svg><path d='M0 0L1Q2C3S4 5T6A7 8 9 2 1 10HfooV'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable was produced. path command \"L\" had missing or non-numeric arguments; that point was dropped path command \"Q\" had missing or non-numeric arguments; that point was dropped path command \"C\" had missing or non-numeric arguments; that point was dropped path command \"S\" had missing or non-numeric arguments; that point was dropped path command \"T\" had missing or non-numeric arguments; that point was dropped path command \"A\" had missing or non-numeric arguments; that point was dropped"
+    }
+  },
+  {
+    "name": "malformed moveto",
+    "input": "<svg><path d='Mfoo 1L2 3'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable was produced. path command \"M\" had missing or non-numeric arguments; that point was dropped"
+    }
+  },
+  {
+    "name": "nonfinite arc point",
+    "input": "<svg><path d='M0 0A1e-300 1e-300 0 0 0 1e-300 0L2 2'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                2
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 2,
+          "height": 2
+        },
+        "placed": {
+          "width": 2,
+          "height": 2
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "line before moveto",
+    "input": "<svg><path d='L10 10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "Cannot read properties of null (reading 'push')"
+    }
+  },
+  {
+    "name": "one point path",
+    "input": "<svg><path d='M1 1'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable found in the SVG"
+    }
+  },
+  {
+    "name": "missing path data",
+    "input": "<svg><path/></svg>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable found in the SVG"
+    }
+  },
+  {
+    "name": "one point polyline",
+    "input": "<svg><polyline points='1 2'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "nothing drawable found in the SVG"
+    }
+  },
+  {
+    "name": "zero size shapes",
+    "input": "<svg><rect width='0' height='0'/><circle r='0'/><ellipse rx='0' ry='0'/><line/><polygon points='1 1 2 2'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 1,
+            "y": 1,
+            "width": 1,
+            "height": 1,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 2,
+          "height": 2
+        },
+        "placed": {
+          "width": 2,
+          "height": 2
+        },
+        "shapes": 5
+      }
+    }
+  },
+  {
+    "name": "attribute number prefixes",
+    "input": "<svg><rect x='2px' y='-3.5em' width='12.9junk' height='8'/><line x1='1e2' y1='0x10' x2='3' y2='4'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 12.9,
+            "height": 8,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                12.9,
+                0
+              ],
+              [
+                12.9,
+                8
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 98,
+            "y": 3.5,
+            "width": 97,
+            "height": 4,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                -97,
+                4
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 98,
+          "height": 8
+        },
+        "placed": {
+          "width": 98,
+          "height": 8
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "nested groups transforms",
+    "input": "<svg transform='translate(2 3)'><g transform='scale(2)'><g transform='rotate(30 5 5)'><rect x='1' y='2' width='4' height='6'/></g></g></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 2.4641016151377535,
+            "y": 1.196152422706633,
+            "width": 8,
+            "height": 12,
+            "angle": 0.5235987755982987,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 12.928203230275509,
+          "height": 14.392304845413264
+        },
+        "placed": {
+          "width": 12.928203230275509,
+          "height": 14.392304845413264
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "all transforms precise",
+    "input": "<svg><path transform='translate(5,6) scale(2,3) rotate(15 4 5) skewX(10) skewY(-8) matrix(1 .2 -.1 1 3 4)' d='M0 0L10 0L10 10Z'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 19.213273493345483,
+            "height": 39.565890036939074,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                19.213273493345483,
+                9.568971400940722
+              ],
+              [
+                15.486540828492272,
+                39.565890036939074
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 19.213273493345483,
+          "height": 39.565890036939074
+        },
+        "placed": {
+          "width": 19.213273493345483,
+          "height": 39.565890036939074
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "transform order",
+    "input": "<svg><path transform='translate(10 0) scale(2)' d='M0 0L5 0'/><path transform='scale(2) translate(10 0)' d='M0 0L5 0'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 10,
+            "y": 0,
+            "width": 10,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 0.000001
+        },
+        "placed": {
+          "width": 20,
+          "height": 0.000001
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "invalid transforms",
+    "input": "<svg><path transform='matrix(1 2) translate(foo) scale() rotate() skewX(nope)' d='M0 0L10 0'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": null,
+            "y": null,
+            "width": 0,
+            "height": 0,
+            "points": [
+              [
+                null,
+                null
+              ],
+              [
+                null,
+                null
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 0.000001,
+          "height": 0.000001
+        },
+        "placed": {
+          "width": 0.000001,
+          "height": 0.000001
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "native rotation and scale",
+    "input": "<svg><rect width='20' height='10' transform='translate(5 6) rotate(30)'/><circle cx='20' cy='10' r='8' transform='scale(2 3)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 1.1602540378443855,
+            "y": 4.330127018922193,
+            "width": 20,
+            "height": 10,
+            "angle": 0.5235987755982987,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "ellipse",
+            "x": 24,
+            "y": 0,
+            "width": 32,
+            "height": 48,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 56,
+          "height": 47.89762023108082
+        },
+        "placed": {
+          "width": 56,
+          "height": 47.89762023108082
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "native reflection",
+    "input": "<svg><rect width='20' height='10' transform='matrix(-2 0 0 3 0 0)'/><ellipse cx='20' cy='10' rx='8' ry='4' transform='matrix(0 2 -3 0 0 0)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 1.948810115540411,
+            "y": 0,
+            "width": 40,
+            "height": 30,
+            "angle": -3.141592653589793,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "ellipse",
+            "x": -4.051189884459589,
+            "y": 28,
+            "width": 32,
+            "height": 24,
+            "angle": 1.5707963267948966,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 41.94881011554041,
+          "height": 56
+        },
+        "placed": {
+          "width": 41.94881011554041,
+          "height": 56
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "native skew fallback",
+    "input": "<svg><rect width='20' height='10' transform='skewX(20)'/><circle cx='20' cy='10' r='8' transform='matrix(1 0 .2 1 0 0)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 23.639702342662023,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                0
+              ],
+              [
+                23.639702342662023,
+                10
+              ],
+              [
+                3.6397023426620234,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 30,
+            "y": 10,
+            "width": 16.195548527112017,
+            "height": 15.931746820720551,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                -3.122408882628678,
+                7.197683482185907
+              ],
+              [
+                -11.145123929900647,
+                6.564879061961863
+              ],
+              [
+                -15.869065503313859,
+                -0.026403529213219423
+              ],
+              [
+                -12.816549628934233,
+                -7.09274577574212
+              ],
+              [
+                -4.890148530015243,
+                -6.520841222443046
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30.03776450113429,
+          "height": 17.965873410360274
+        },
+        "placed": {
+          "width": 30.03776450113429,
+          "height": 17.965873410360274
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "root presentation attributes",
+    "input": "<svg fill='none' stroke='currentColor' stroke-width='2'><path d='M0 0L30 0L30 30Z'/><circle cx='50' cy='10' r='8'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 30,
+            "height": 30,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                30,
+                0
+              ],
+              [
+                30,
+                30
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 2,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "ellipse",
+            "x": 42,
+            "y": 2,
+            "width": 16,
+            "height": 16,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 2,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 58,
+          "height": 30
+        },
+        "placed": {
+          "width": 58,
+          "height": 30
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "style precedence and inheritance",
+    "input": "<svg fill='#f00' stroke='#00f'><style>rect{fill:#0a0;stroke-width:4}.hot{fill:#123456;opacity:.5}#target{fill:url(#grad)}</style><g class='hot' style='fill:rgb(10, 20, 30); stroke: none'><rect id='target' width='20' height='10' fill='#abc'/><circle cx='30' cy='10' r='5' style='display:none'/><line x2='20' y2='20'/></g></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 4,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 50
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "strokeColor": "#0a141e",
+            "backgroundColor": "#0a141e",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 50,
+            "roundness": null,
+            "fillStyle": "solid"
+          }
+        ],
+        "warnings": [
+          "could not resolve paint \"url(#grad)\""
+        ],
+        "source": {
+          "width": 20,
+          "height": 20
+        },
+        "placed": {
+          "width": 20,
+          "height": 20
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "css at rules comments selectors",
+    "input": "<svg><style>@media screen { rect { fill: red } } /* x */ .a,.b{fill: #010203} g>rect{fill:yellow} rect:hover{fill:blue}</style><rect class='a b' width='10' height='10'/><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#010203",
+            "backgroundColor": "#010203",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "inline style case and empty values",
+    "input": "<svg><rect width='10' height='10' STYLE='FILL: #AbC ; stroke-width : 3.5 ; bad ; opacity: 40%; fill-opacity: 50%'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "display none group",
+    "input": "<svg><g display='none'><rect width='10' height='10'/></g><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "named and functional colors",
+    "input": "<svg><rect width='10' height='10' fill='DarkGrey' stroke='rgba(300,-2,12.6,0.4)'/><rect x='20' width='10' height='10' fill='rgb(100%, 0%, 50%)' stroke='#abc'/><rect x='40' width='10' height='10' fill='#11223344' stroke='#12'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#ff000d",
+            "backgroundColor": "#a9a9a9",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 20,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#aabbcc",
+            "backgroundColor": "#ff0080",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 40,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#112233",
+            "backgroundColor": "#112233",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 50,
+          "height": 10
+        },
+        "placed": {
+          "width": 50,
+          "height": 10
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "malformed functional colors",
+    "input": "<svg><rect width='10' height='10' fill='rgb()' stroke='rgb(1)'/><rect x='20' width='10' height='10' fill='rgba(1 2)'/></svg>",
+    "options": {
+      "style": "precise"
+    },
+    "expected": {
+      "ok": false,
+      "error": "Cannot read properties of undefined (reading 'endsWith')"
+    }
+  },
+  {
+    "name": "current color custom",
+    "input": "<svg fill='currentColor' stroke='currentColor'><rect width='10' height='10'/><line x2='20' y2='20' stroke='none'/></svg>",
+    "options": {
+      "currentColor": "#654321"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#654321",
+            "backgroundColor": "#654321",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "strokeColor": "#654321",
+            "backgroundColor": "#654321",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 20
+        },
+        "placed": {
+          "width": 20,
+          "height": 20
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "false current color",
+    "input": "<svg stroke='currentColor' fill='red'><line x2='20' y2='20'/></svg>",
+    "options": {
+      "currentColor": false
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "strokeColor": false,
+            "backgroundColor": "#ff0000",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 20
+        },
+        "placed": {
+          "width": 20,
+          "height": 20
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "symbol use",
+    "input": "<svg><defs><symbol id='icon' viewBox='0 0 10 10'><rect width='10' height='10'/></symbol></defs><use href='#icon' x='20' y='30'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "xlink use nested style transform",
+    "input": "<svg><g fill='#123456' transform='translate(2 3)'><symbol id='s' transform='rotate(10)'><rect width='10' height='5'/></symbol><use xlink:href='#s' x='4' y='6' transform='scale(2)'/></g></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0.7163184184567335,
+            "y": 1.6605205417303432,
+            "width": 19.999999999999996,
+            "height": 9.999999999999998,
+            "angle": 0.17453292519943295,
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 21.43263683691346,
+          "height": 13.321041083460685
+        },
+        "placed": {
+          "width": 21.43263683691346,
+          "height": 13.321041083460685
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "use target group and id override",
+    "input": "<svg><style>#target{fill:#654321}</style><g id='target'><rect width='10' height='10'/></g><use href='#target' x='20'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#654321",
+            "backgroundColor": "#654321",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 20,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30,
+          "height": 10
+        },
+        "placed": {
+          "width": 30,
+          "height": 10
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "use missing",
+    "input": "<svg><use href='#missing'/><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "<use> pointed at \"#missing\", which is not in the file"
+        ],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "use cycle",
+    "input": "<svg><use id='a' href='#b'/><use id='b' href='#a'/><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "duplicate ids last wins",
+    "input": "<svg><rect id='x' width='5' height='5'/><rect id='x' x='10' width='6' height='6'/><use href='#x'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 5,
+            "height": 5,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 10,
+            "y": 0,
+            "width": 6,
+            "height": 6,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 10,
+            "y": 0,
+            "width": 6,
+            "height": 6,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 16,
+          "height": 6
+        },
+        "placed": {
+          "width": 16,
+          "height": 6
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "ignored containers",
+    "input": "<svg><title>T</title><desc>D</desc><metadata>M</metadata><defs><rect width='100' height='100'/></defs><clipPath id='c'><rect width='100' height='100'/></clipPath><mask id='m'><rect width='100' height='100'/></mask><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "clip and mask warnings",
+    "input": "<svg><g clip-path='url(#c)'><rect width='10' height='10'/></g><g mask='url(#m)'><rect x='20' width='10' height='10'/></g><svg clip-path='x'><rect x='40' width='10' height='10'/></svg></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 20,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 40,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "a clip-path or mask was ignored, so something may extend past where it should",
+          "a clip-path or mask was ignored, so something may extend past where it should",
+          "a clip-path or mask was ignored, so something may extend past where it should"
+        ],
+        "source": {
+          "width": 50,
+          "height": 10
+        },
+        "placed": {
+          "width": 50,
+          "height": 10
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "unsupported elements",
+    "input": "<svg><foreignObject><rect width='100' height='100'/></foreignObject><unknown/><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "ignored unsupported elements: foreignobject, unknown"
+        ],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "embedded image",
+    "input": "<svg><image href='x.png'/><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "an embedded <image> was skipped: this converts vector artwork to editable elements, and a raster has none"
+        ],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "gradient first stop",
+    "input": "<svg><defs><linearGradient id='g'><stop offset='0' stop-color='#123456'/><stop offset='1' stop-color='#abcdef'/></linearGradient></defs><rect width='20' height='10' fill='url(#g)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "gradient \"g\" flattened to its first stop"
+        ],
+        "source": {
+          "width": 20,
+          "height": 10
+        },
+        "placed": {
+          "width": 20,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "gradient href chain and class",
+    "input": "<svg><style>.paint{stop-color:rgb(1,2,3)}</style><defs><linearGradient id='base'><stop class='paint'/><stop stop-color='red'/></linearGradient><linearGradient id='alias' href='#base'/></defs><ellipse cx='20' cy='10' rx='10' ry='5' fill='url(#alias)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "ellipse",
+            "x": -0.1116917377487141,
+            "y": -0.013981014094098576,
+            "width": 20,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#010203",
+            "backgroundColor": "#010203",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "gradient \"alias\" flattened to its first stop"
+        ],
+        "source": {
+          "width": 19.888308262251286,
+          "height": 9.972037971811801
+        },
+        "placed": {
+          "width": 19.888308262251286,
+          "height": 9.972037971811801
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "gradient inline stop and current color",
+    "input": "<svg><defs><linearGradient id='g'><stop style='stop-color:#AbC'/></linearGradient><linearGradient id='h'><stop stop-color='currentColor'/></linearGradient></defs><rect width='10' height='10' fill='url(#g)'/><rect x='20' width='10' height='10' fill='url(#h)'/></svg>",
+    "options": {
+      "currentColor": "#111111"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#aabbcc",
+            "backgroundColor": "#aabbcc",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 20,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#111111",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "gradient \"g\" flattened to its first stop",
+          "gradient \"h\" flattened to its first stop"
+        ],
+        "source": {
+          "width": 30,
+          "height": 10
+        },
+        "placed": {
+          "width": 30,
+          "height": 10
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "gradient unresolved and cycle",
+    "input": "<svg><defs><linearGradient id='a' href='#b'/><linearGradient id='b' href='#a'/></defs><rect width='10' height='10' fill='url(#a)'/><rect x='20' width='10' height='10' fill='url(#missing)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 20,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "could not resolve paint \"url(#a)\"",
+          "could not resolve paint \"url(#missing)\""
+        ],
+        "source": {
+          "width": 30,
+          "height": 10
+        },
+        "placed": {
+          "width": 30,
+          "height": 10
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "gradient href whitespace is literal",
+    "input": "<svg><defs><linearGradient id='g'><stop stop-color='red'/></linearGradient><linearGradient id='h' href=' #g'/></defs><rect width='10' height='10' fill='url(#h)'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [
+          "could not resolve paint \"url(#h)\""
+        ],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "text anchors and baselines",
+    "input": "<svg><text x='10' y='20' font-size='12' font-family='Arial' text-anchor='start'>Start</text><text x='40' y='20' font-size='12' font-family='Courier New' text-anchor='middle' dominant-baseline='middle'>Middle</text><text x='80' y='20' font-size='12' font-family='Comic Sans MS' text-anchor='end' alignment-baseline='hanging'>End</text><text x='100' y='50' font-size='10' baseline='text-before-edge'>Edge</text></svg>",
+    "options": {
+      "tolerance": 1
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "text",
+            "x": 0,
+            "y": -10.2,
+            "text": "Start",
+            "fontSize": 12,
+            "fontFamily": 2,
+            "textAlign": "left",
+            "width": 25.3416,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "text",
+            "x": 8.907599999999999,
+            "y": -6,
+            "text": "Middle",
+            "fontSize": 12,
+            "fontFamily": 3,
+            "textAlign": "center",
+            "width": 42.1848,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "text",
+            "x": 47.944,
+            "y": 0,
+            "text": "End",
+            "fontSize": 12,
+            "fontFamily": 5,
+            "textAlign": "right",
+            "width": 22.056,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "text",
+            "x": 90,
+            "y": 21.5,
+            "text": "Edge",
+            "fontSize": 10,
+            "fontFamily": 5,
+            "textAlign": "left",
+            "width": 24.04,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 90,
+          "height": 30
+        },
+        "placed": {
+          "width": 90,
+          "height": 30
+        },
+        "shapes": 4
+      }
+    }
+  },
+  {
+    "name": "text nested content",
+    "input": "<svg><text x='5' y='10'>Hello<tspan>nested</tspan><tspan><tspan>deep</tspan></tspan> world</text><text x='5' y='30'>   </text></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "text",
+            "x": 0,
+            "y": -13.6,
+            "text": "Hello nested  world",
+            "fontSize": 16,
+            "fontFamily": 5,
+            "textAlign": "left",
+            "width": 147.13600000000002,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 0.000001,
+          "height": 0.000001
+        },
+        "placed": {
+          "width": 0.000001,
+          "height": 0.000001
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "text inherited style and transform",
+    "input": "<svg fill='#123456' font-size='20' font-family='Inter' text-anchor='middle'><g transform='translate(10 20) scale(2)'><text x='0' y='0'>Label</text></g></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "text",
+            "x": -24.47,
+            "y": -17,
+            "text": "Label",
+            "fontSize": 20,
+            "fontFamily": 2,
+            "textAlign": "center",
+            "width": 48.94,
+            "strokeColor": "#123456",
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 0.000001,
+          "height": 0.000001
+        },
+        "placed": {
+          "width": 0.000001,
+          "height": 0.000001
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "font fallbacks",
+    "input": "<svg><text x='0' y='10'>a</text><text x='20' y='10' font-family='unknown'>b</text><text x='40' y='10' font-family='Marker'>c</text><text x='60' y='10' font-family='Times New Roman'>d</text></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "text",
+            "x": 0,
+            "y": -13.6,
+            "text": "a",
+            "fontSize": 16,
+            "fontFamily": 5,
+            "textAlign": "left",
+            "width": 9.216,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "text",
+            "x": 20,
+            "y": -13.6,
+            "text": "b",
+            "fontSize": 16,
+            "fontFamily": 5,
+            "textAlign": "left",
+            "width": 8.88,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "text",
+            "x": 40,
+            "y": -13.6,
+            "text": "c",
+            "fontSize": 16,
+            "fontFamily": 5,
+            "textAlign": "left",
+            "width": 8.064,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "text",
+            "x": 60,
+            "y": -13.6,
+            "text": "d",
+            "fontSize": 16,
+            "fontFamily": 2,
+            "textAlign": "left",
+            "width": 8.8992,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 60,
+          "height": 0.000001
+        },
+        "placed": {
+          "width": 60,
+          "height": 0.000001
+        },
+        "shapes": 4
+      }
+    }
+  },
+  {
+    "name": "opacity selection",
+    "input": "<svg><rect width='10' height='10' fill='red' stroke='blue' opacity='.5' fill-opacity='.4' stroke-opacity='.6'/><line x2='20' y2='20' stroke='none' fill='red' fill-opacity='.7'/><circle cx='40' cy='10' r='5' fill='none' stroke='blue' stroke-opacity='.3'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#0000ff",
+            "backgroundColor": "#ff0000",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 30
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "strokeColor": "#ff0000",
+            "backgroundColor": "#ff0000",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null,
+            "fillStyle": "solid"
+          },
+          {
+            "type": "ellipse",
+            "x": 35,
+            "y": 5,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#0000ff",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 30
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 45,
+          "height": 20
+        },
+        "placed": {
+          "width": 45,
+          "height": 20
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "dash arrays",
+    "input": "<svg><line x2='20' y2='0' stroke-dasharray='4 2'/><line x2='20' y2='20' stroke-dasharray='none'/><rect width='10' height='10' style='stroke-dasharray: 2,3'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 0,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "dashed",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 20,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "dashed",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 20,
+          "height": 20
+        },
+        "placed": {
+          "width": 20,
+          "height": 20
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "viewbox fit",
+    "input": "<svg viewBox='10 20 100 50'><rect x='10' y='20' width='100' height='50'/></svg>",
+    "options": {
+      "x": 7,
+      "y": 9,
+      "width": 300,
+      "height": 200
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 7,
+            "y": 9,
+            "width": 300,
+            "height": 150,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 100,
+          "height": 50
+        },
+        "placed": {
+          "width": 300,
+          "height": 150
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "viewbox width only",
+    "input": "<svg viewBox='10 20 100 50'><rect x='10' y='20' width='100' height='50'/></svg>",
+    "options": {
+      "x": 7,
+      "width": 300
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 7,
+            "y": 0,
+            "width": 300,
+            "height": 150,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 100,
+          "height": 50
+        },
+        "placed": {
+          "width": 300,
+          "height": 150
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "painted bounds fit",
+    "input": "<svg><rect x='10' y='20' width='30' height='10'/><circle cx='70' cy='40' r='5'/></svg>",
+    "options": {
+      "width": 160,
+      "height": 80
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": -7.105427357601002e-15,
+            "y": -1.7763568394002505e-15,
+            "width": 73.84615384615385,
+            "height": 24.615384615384617,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "ellipse",
+            "x": 135.3846153846154,
+            "y": 36.92307692307693,
+            "width": 24.615384615384617,
+            "height": 24.615384615384617,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 65,
+          "height": 25
+        },
+        "placed": {
+          "width": 160,
+          "height": 61.53846153846154
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "invalid viewbox falls back",
+    "input": "<svg viewBox='0 0 0 -5'><rect x='10' y='20' width='30' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 30,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30,
+          "height": 10
+        },
+        "placed": {
+          "width": 30,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "invalid target width",
+    "input": "<svg><rect width='30' height='10'/></svg>",
+    "options": {
+      "width": "foo"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": null,
+            "y": null,
+            "width": null,
+            "height": null,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30,
+          "height": 10
+        },
+        "placed": {
+          "width": null,
+          "height": null
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "precise custom roughness and fill",
+    "input": "<svg><rect width='200' height='200' fill='red' stroke='blue'/><path d='M0 0L10 0L10 10Z' fill='red'/></svg>",
+    "options": {
+      "style": "precise",
+      "roughness": 0.7,
+      "fillStyle": "hachure"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 200,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                200,
+                0
+              ],
+              [
+                200,
+                200
+              ],
+              [
+                0,
+                200
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#0000ff",
+            "backgroundColor": "#ff0000",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0.7,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#ff0000",
+            "backgroundColor": "#ff0000",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0.7,
+            "opacity": 100,
+            "fillStyle": "solid",
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 200,
+          "height": 200
+        },
+        "placed": {
+          "width": 200,
+          "height": 200
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "sketch custom step fill and tolerance",
+    "input": "<svg><path d='M0 0C0 100 100 100 100 0L100 100Z' fill='red'/><rect width='200' height='200' fill='red'/></svg>",
+    "options": {
+      "step": 7,
+      "tolerance": 5,
+      "fillStyle": "cross-hatch",
+      "roughness": 2
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0.08240740740740739,
+                4.916666666666666
+              ],
+              [
+                0.32592592592592595,
+                9.666666666666668
+              ],
+              [
+                0.7249999999999999,
+                14.25
+              ],
+              [
+                1.2740740740740741,
+                18.666666666666664
+              ],
+              [
+                1.9675925925925926,
+                22.916666666666664
+              ],
+              [
+                2.8000000000000003,
+                27
+              ],
+              [
+                3.765740740740741,
+                30.916666666666664
+              ],
+              [
+                4.859259259259259,
+                34.666666666666664
+              ],
+              [
+                6.074999999999999,
+                38.25
+              ],
+              [
+                7.4074074074074066,
+                41.666666666666664
+              ],
+              [
+                8.850925925925925,
+                44.91666666666666
+              ],
+              [
+                10.400000000000004,
+                48.000000000000014
+              ],
+              [
+                12.049074074074074,
+                50.91666666666667
+              ],
+              [
+                13.792592592592591,
+                53.66666666666666
+              ],
+              [
+                15.625,
+                56.25
+              ],
+              [
+                17.54074074074074,
+                58.66666666666667
+              ],
+              [
+                19.534259259259255,
+                60.91666666666666
+              ],
+              [
+                21.599999999999998,
+                62.999999999999986
+              ],
+              [
+                23.732407407407404,
+                64.91666666666666
+              ],
+              [
+                25.925925925925924,
+                66.66666666666667
+              ],
+              [
+                28.174999999999997,
+                68.25
+              ],
+              [
+                30.474074074074068,
+                69.66666666666666
+              ],
+              [
+                32.8175925925926,
+                70.91666666666667
+              ],
+              [
+                35.199999999999996,
+                72
+              ],
+              [
+                37.61574074074074,
+                72.91666666666666
+              ],
+              [
+                40.059259259259264,
+                73.66666666666667
+              ],
+              [
+                42.525000000000006,
+                74.25000000000001
+              ],
+              [
+                45.007407407407406,
+                74.66666666666666
+              ],
+              [
+                47.50092592592592,
+                74.91666666666666
+              ],
+              [
+                50,
+                75
+              ],
+              [
+                52.49907407407407,
+                74.91666666666666
+              ],
+              [
+                54.992592592592594,
+                74.66666666666666
+              ],
+              [
+                57.47500000000001,
+                74.25
+              ],
+              [
+                59.940740740740736,
+                73.66666666666667
+              ],
+              [
+                62.38425925925927,
+                72.91666666666667
+              ],
+              [
+                64.80000000000001,
+                72
+              ],
+              [
+                67.18240740740741,
+                70.91666666666666
+              ],
+              [
+                69.52592592592592,
+                69.66666666666667
+              ],
+              [
+                71.825,
+                68.25
+              ],
+              [
+                74.07407407407408,
+                66.66666666666667
+              ],
+              [
+                76.26759259259259,
+                64.91666666666666
+              ],
+              [
+                78.39999999999998,
+                63
+              ],
+              [
+                80.46574074074074,
+                60.91666666666666
+              ],
+              [
+                82.45925925925926,
+                58.66666666666667
+              ],
+              [
+                84.375,
+                56.25
+              ],
+              [
+                86.20740740740742,
+                53.66666666666666
+              ],
+              [
+                87.95092592592592,
+                50.91666666666666
+              ],
+              [
+                89.60000000000001,
+                47.99999999999999
+              ],
+              [
+                91.14907407407408,
+                44.91666666666667
+              ],
+              [
+                92.5925925925926,
+                41.66666666666666
+              ],
+              [
+                93.925,
+                38.25000000000001
+              ],
+              [
+                95.14074074074074,
+                34.66666666666666
+              ],
+              [
+                96.23425925925926,
+                30.91666666666667
+              ],
+              [
+                97.2,
+                26.999999999999996
+              ],
+              [
+                98.0324074074074,
+                22.91666666666668
+              ],
+              [
+                98.72592592592594,
+                18.66666666666666
+              ],
+              [
+                99.27499999999999,
+                14.25000000000001
+              ],
+              [
+                99.67407407407407,
+                9.666666666666666
+              ],
+              [
+                99.9175925925926,
+                4.916666666666681
+              ],
+              [
+                100,
+                0
+              ],
+              [
+                100,
+                100
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "strokeColor": "#ff0000",
+            "backgroundColor": "#ff0000",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 2,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            },
+            "fillStyle": "cross-hatch"
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 200,
+            "angle": 0,
+            "strokeColor": "#ff0000",
+            "backgroundColor": "#ff0000",
+            "fillStyle": "cross-hatch",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 2,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 200,
+          "height": 200
+        },
+        "placed": {
+          "width": 200,
+          "height": 200
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "small area hachure solid",
+    "input": "<svg><rect width='10' height='10' fill='red'/><rect x='30' width='200' height='200' fill='red'/></svg>",
+    "options": {
+      "fillStyle": "hachure"
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#ff0000",
+            "backgroundColor": "#ff0000",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 30,
+            "y": 0,
+            "width": 200,
+            "height": 200,
+            "angle": 0,
+            "strokeColor": "#ff0000",
+            "backgroundColor": "#ff0000",
+            "fillStyle": "hachure",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 230,
+          "height": 200
+        },
+        "placed": {
+          "width": 230,
+          "height": 200
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "xml comments cdata doctype pi",
+    "input": "<!DOCTYPE svg [<!ENTITY x 'y'>]><?xml version='1.0'?><!-- hi --><svg><!--x--><style><![CDATA[rect{fill:#123456}]]></style><rect width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#123456",
+            "backgroundColor": "#123456",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "xml malformed and case",
+    "input": "<SVG><RECT Width='10' Height='10'/><path d='M0 0L2 2'></PATH><g><line x2='3' y2='4'></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                2
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          },
+          {
+            "type": "line",
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 4,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                4
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": null
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 3,
+          "height": 4
+        },
+        "placed": {
+          "width": 3,
+          "height": 4
+        },
+        "shapes": 3
+      }
+    }
+  },
+  {
+    "name": "xml unquoted attrs ignored",
+    "input": "<svg><rect width=10 height=10 fill=red/><rect x='20' width='10' height='10'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 20,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 30,
+          "height": 10
+        },
+        "placed": {
+          "width": 30,
+          "height": 10
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "xml entities are literal",
+    "input": "<svg><text x='0' y='10'>&amp; &#65;</text><rect width='10' height='10' fill='&amp;'/></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "text",
+            "x": 0,
+            "y": -3.5999999999999996,
+            "text": "&amp; &#65;",
+            "fontSize": 16,
+            "fontFamily": 5,
+            "textAlign": "left",
+            "width": 99.98400000000001,
+            "strokeColor": "#1e1e1e",
+            "opacity": 100
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 2
+      }
+    }
+  },
+  {
+    "name": "null input",
+    "input": null,
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "no <svg> element found"
+    }
+  },
+  {
+    "name": "numeric input",
+    "input": 12,
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "no <svg> element found"
+    }
+  },
+  {
+    "name": "null options",
+    "input": "<svg><path d='M10 40 C 30 5, 60 5, 110 40'/></svg>",
+    "options": null,
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "line",
+            "x": 0,
+            "y": 26.25,
+            "width": 100,
+            "height": 26.25,
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                11.769422782080499,
+                -15.433431837575878
+              ],
+              [
+                28.52288773001555,
+                -24.963434740106596
+              ],
+              [
+                47.84352191033199,
+                -25.406054003873635
+              ],
+              [
+                66.37964588954326,
+                -19.56000053627034
+              ],
+              [
+                83.66496781249974,
+                -10.604819031805317
+              ],
+              [
+                100,
+                0
+              ]
+            ],
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "opacity": 100,
+            "roundness": {
+              "type": 2
+            }
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 100,
+          "height": 26.25
+        },
+        "placed": {
+          "width": 100,
+          "height": 26.25
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "nested svg viewport",
+    "input": "<svg viewBox='0 0 100 100'><svg x='10' y='20' width='30' height='40'><rect width='10' height='10'/></svg></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 100,
+          "height": 100
+        },
+        "placed": {
+          "width": 100,
+          "height": 100
+        },
+        "shapes": 1
+      }
+    }
+  },
+  {
+    "name": "anchor element",
+    "input": "<svg><a href='x'><rect width='10' height='10'/></a></svg>",
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "specs": [
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "angle": 0,
+            "strokeColor": "#1e1e1e",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 1,
+            "roundness": null,
+            "opacity": 100
+          }
+        ],
+        "warnings": [],
+        "source": {
+          "width": 10,
+          "height": 10
+        },
+        "placed": {
+          "width": 10,
+          "height": 10
+        },
+        "shapes": 1
+      }
+    }
+  }
+]

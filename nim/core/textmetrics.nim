@@ -49,11 +49,8 @@ proc fontFactor(fontFamily: float): float =
   elif fontFamily == 8.0: 0.53
   else: 0.51
 
-proc loadMetrics*(path: string): int =
-  if not fileExists(path):
-    METRICS = initTable[string, FontTable]()
-    return 0
-  let root = parseFile(path)
+proc loadMetricsFromText*(text: string): int =
+  let root = parseJson(text)
   METRICS = initTable[string, FontTable]()
   for family, table in root:
     var entry = FontTable(mean: floatOr(table{"mean"}, 0.0))
@@ -64,6 +61,12 @@ proc loadMetrics*(path: string): int =
         entry.advance[glyph] = floatOr(value, 0.0)
     METRICS[family] = entry
   METRICS.len
+
+proc loadMetrics*(path: string): int =
+  if not fileExists(path):
+    METRICS = initTable[string, FontTable]()
+    return 0
+  loadMetricsFromText(readFile(path))
 
 proc loadMetricsFromEnv*(): int =
   let path = getEnv(METRICS_PATH_ENV)

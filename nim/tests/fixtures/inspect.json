@@ -1,0 +1,3189 @@
+[
+  {
+    "name": "clean scene",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 200,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 25,
+        "text": "clean",
+        "fontSize": 20
+      },
+      {
+        "id": "c",
+        "type": "rectangle",
+        "x": 400,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "d",
+        "type": "rectangle",
+        "x": 600,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "e",
+        "type": "rectangle",
+        "x": 800,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "f",
+        "type": "rectangle",
+        "x": 1000,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 7,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "null scene",
+    "input": null,
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 0,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "null options",
+    "input": [],
+    "options": null,
+    "expected": {
+      "ok": false,
+      "error": "Cannot read properties of null (reading 'limit')"
+    }
+  },
+  {
+    "name": "non-array scene",
+    "input": {},
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "(elements ?? []).filter is not a function"
+    }
+  },
+  {
+    "name": "null element",
+    "input": [
+      null
+    ],
+    "options": {},
+    "expected": {
+      "ok": false,
+      "error": "Cannot read properties of null (reading 'isDeleted')"
+    }
+  },
+  {
+    "name": "empty scene",
+    "input": [],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 0,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "deleted elements ignored",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100,
+        "isDeleted": true
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 20,
+        "height": 20,
+        "text": "gone",
+        "fontSize": 20,
+        "isDeleted": true
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 0,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "text hidden by later rectangle",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "hidden",
+        "fontSize": 20
+      },
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "text-hidden": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"hidden\" is covered for ~30px by a filled rectangle drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t",
+              "r"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "text before opaque shape is safe",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "safe",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "bound text ignores its container",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "bound",
+        "fontSize": 20,
+        "containerId": "r"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "transparent and low opacity shapes do not hide",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "safe",
+        "fontSize": 20
+      },
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "transparent",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 60
+      },
+      {
+        "id": "c",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 61
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 4,
+        "problems": 3,
+        "counts": {
+          "text-hidden": 1,
+          "duplicate": 2
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"safe\" is covered for ~30px by a filled rectangle drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t",
+              "c"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two rectangle elements sit exactly on top of each other.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two rectangle elements sit exactly on top of each other.",
+            "ids": [
+              "a",
+              "c"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "hidden width threshold",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "edge",
+        "fontSize": 20
+      },
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 48,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "all opaque types",
+    "input": [
+      {
+        "id": "t0",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "rectangle",
+        "fontSize": 20
+      },
+      {
+        "id": "s0",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t1",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "ellipse",
+        "fontSize": 20
+      },
+      {
+        "id": "s1",
+        "type": "ellipse",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t2",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "diamond",
+        "fontSize": 20
+      },
+      {
+        "id": "s2",
+        "type": "diamond",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t3",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "line",
+        "fontSize": 20
+      },
+      {
+        "id": "s3",
+        "type": "line",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t4",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "freedraw",
+        "fontSize": 20
+      },
+      {
+        "id": "s4",
+        "type": "freedraw",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 10,
+        "problems": 15,
+        "counts": {
+          "text-hidden": 5,
+          "text-collision": 10
+        },
+        "truncated": true,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"rectangle\" is covered for ~30px by a filled rectangle drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t0",
+              "s0"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"ellipse\" is covered for ~30px by a filled ellipse drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t1",
+              "s1"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"diamond\" is covered for ~30px by a filled diamond drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t2",
+              "s2"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"line\" is covered for ~30px by a filled line drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t3",
+              "s3"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"freedraw\" is covered for ~30px by a filled freedraw drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t4",
+              "s4"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"rectangle\" and \"ellipse\" overlap by 40x20px. Move one.",
+            "ids": [
+              "t0",
+              "t1"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"rectangle\" and \"diamond\" overlap by 40x20px. Move one.",
+            "ids": [
+              "t0",
+              "t2"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"rectangle\" and \"line\" overlap by 40x20px. Move one.",
+            "ids": [
+              "t0",
+              "t3"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"rectangle\" and \"freedraw\" overlap by 40x20px. Move one.",
+            "ids": [
+              "t0",
+              "t4"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"ellipse\" and \"diamond\" overlap by 40x20px. Move one.",
+            "ids": [
+              "t1",
+              "t2"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"ellipse\" and \"line\" overlap by 40x20px. Move one.",
+            "ids": [
+              "t1",
+              "t3"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "text escapes panel right",
+    "input": [
+      {
+        "id": "p",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 200,
+        "height": 200,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 200,
+        "height": 25,
+        "text": "wide",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "text-escapes-panel": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "text-escapes-panel",
+            "message": "\"wide\" runs 36px past the right edge of the panel it sits in. Shorten it, reduce fontSize, or set a width so it wraps.",
+            "ids": [
+              "t",
+              "p"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "text escapes panel bottom",
+    "input": [
+      {
+        "id": "p",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 200,
+        "height": 200,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 150,
+        "width": 100,
+        "height": 70,
+        "text": "tall",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "text-escapes-panel": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "text-escapes-panel",
+            "message": "\"tall\" runs 20px past the bottom edge of the panel it sits in. Shorten it, reduce fontSize, or set a width so it wraps.",
+            "ids": [
+              "t",
+              "p"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "text tight panel",
+    "input": [
+      {
+        "id": "p",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 200,
+        "height": 200,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 165,
+        "height": 25,
+        "text": "tight",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "text-tight": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "info",
+            "kind": "text-tight",
+            "message": "\"tight\" sits 2px from the panel edge. Under 8px reads as a mistake rather than a margin.",
+            "ids": [
+              "t",
+              "p"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "text comfortably inside panel",
+    "input": [
+      {
+        "id": "p",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 200,
+        "height": 200,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 100,
+        "height": 25,
+        "text": "ok",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "smallest containing panel",
+    "input": [
+      {
+        "id": "big",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 400,
+        "height": 400,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "small",
+        "type": "rectangle",
+        "x": 50,
+        "y": 50,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 60,
+        "y": 60,
+        "width": 100,
+        "height": 25,
+        "text": "x",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 3,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "panel origin boundaries",
+    "input": [
+      {
+        "id": "p",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 200,
+        "height": 200,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "a",
+        "type": "text",
+        "x": -2,
+        "y": -2,
+        "width": 20,
+        "height": 20,
+        "text": "a",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 200,
+        "y": 200,
+        "width": 20,
+        "height": 20,
+        "text": "b",
+        "fontSize": 20
+      },
+      {
+        "id": "c",
+        "type": "text",
+        "x": 201,
+        "y": 100,
+        "width": 20,
+        "height": 20,
+        "text": "c",
+        "fontSize": 20
+      },
+      {
+        "id": "d",
+        "type": "text",
+        "x": 100,
+        "y": -3,
+        "width": 20,
+        "height": 20,
+        "text": "d",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 5,
+        "problems": 2,
+        "counts": {
+          "text-escapes-panel": 1,
+          "text-tight": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "text-escapes-panel",
+            "message": "\"b\" runs 22px past the right edge of the panel it sits in. Shorten it, reduce fontSize, or set a width so it wraps.",
+            "ids": [
+              "b",
+              "p"
+            ]
+          },
+          {
+            "severity": "info",
+            "kind": "text-tight",
+            "message": "\"a\" sits -2px from the panel edge. Under 8px reads as a mistake rather than a margin.",
+            "ids": [
+              "a",
+              "p"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "bound text excluded from panel checks",
+    "input": [
+      {
+        "id": "p",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 200,
+        "height": 200,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 200,
+        "height": 25,
+        "text": "bound",
+        "fontSize": 20,
+        "containerId": "other"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "orphan-label": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "orphan-label",
+            "message": "A bound label points at a container that is not in the scene.",
+            "ids": [
+              "t"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "text collision",
+    "input": [
+      {
+        "id": "a",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "first",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 20,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "second",
+        "fontSize": 20
+      },
+      {
+        "id": "c",
+        "type": "text",
+        "x": 100,
+        "y": 100,
+        "width": 40,
+        "height": 20,
+        "text": "safe",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 3,
+        "problems": 1,
+        "counts": {
+          "text-collision": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"first\" and \"second\" overlap by 20x10px. Move one.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "collision threshold",
+    "input": [
+      {
+        "id": "a",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "a",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 36,
+        "y": 16,
+        "width": 40,
+        "height": 20,
+        "text": "b",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "text-collision": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"a\" and \"b\" overlap by 4x4px. Move one.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "bound text excluded from collisions",
+    "input": [
+      {
+        "id": "a",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "a",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "b",
+        "fontSize": 20,
+        "containerId": "x"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "orphan-label": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "orphan-label",
+            "message": "A bound label points at a container that is not in the scene.",
+            "ids": [
+              "b"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "leader through text",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 30,
+        "width": 100,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "line-through-text": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "A line runs through \"label\". Stop the leader at the edge of the label instead of crossing it.",
+            "ids": [
+              "t",
+              "l"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "leader endpoint inside text",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 30,
+        "width": 30,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            30,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "arrow through text",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "a",
+        "type": "arrow",
+        "x": 0,
+        "y": 30,
+        "width": 100,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "line-through-text": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "A arrow runs through \"label\". Stop the leader at the edge of the label instead of crossing it.",
+            "ids": [
+              "t",
+              "a"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "long rule through text",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 30,
+        "width": 500,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            500,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "line-through-text": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "\"label\" sits on top of a full-length rule (500x0). Move the label clear of the frame or divider, or break the rule around it.",
+            "ids": [
+              "t",
+              "l"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "long rule exact threshold",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 30,
+        "width": 400,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            400,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "line-through-text": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "A line runs through \"label\". Stop the leader at the edge of the label instead of crossing it.",
+            "ids": [
+              "t",
+              "l"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "polyline through text",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "points": [
+          [
+            0,
+            60
+          ],
+          [
+            50,
+            0
+          ],
+          [
+            100,
+            60
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "line-through-text": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "A line runs through \"label\". Stop the leader at the edge of the label instead of crossing it.",
+            "ids": [
+              "t",
+              "l"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "too many stroke points ignored",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 30,
+        "width": 100,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "filled stroke ignored as leader",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 40,
+        "height": 20,
+        "text": "label",
+        "fontSize": 20
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 30,
+        "width": 100,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            0
+          ]
+        ],
+        "backgroundColor": "red"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "text-hidden": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"label\" is covered for ~40px by a filled line drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "t",
+              "l"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "orphan label",
+    "input": [
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "orphan",
+        "fontSize": 20,
+        "containerId": "missing"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 1,
+        "problems": 1,
+        "counts": {
+          "orphan-label": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "orphan-label",
+            "message": "A bound label points at a container that is not in the scene.",
+            "ids": [
+              "t"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "rectangle label too tall",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 40,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 36,
+        "text": "tall",
+        "fontSize": 20,
+        "containerId": "r"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "label-too-tall": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "label-too-tall",
+            "message": "The label on this rectangle needs 36px but the container is 40px. Excalidraw clips it - make the container taller.",
+            "ids": [
+              "t",
+              "r"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "rectangle label fits",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 40,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 31,
+        "text": "fits",
+        "fontSize": 20,
+        "containerId": "r"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "diamond label limit",
+    "input": [
+      {
+        "id": "d",
+        "type": "diamond",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 40,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 15,
+        "text": "diamond",
+        "fontSize": 20,
+        "containerId": "d"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "label-too-tall": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "label-too-tall",
+            "message": "The label on this diamond needs 15px but the container is 40px. Excalidraw clips it - make the container taller.",
+            "ids": [
+              "t",
+              "d"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "ellipse label limit",
+    "input": [
+      {
+        "id": "e",
+        "type": "ellipse",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 40,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 24,
+        "text": "ellipse",
+        "fontSize": 20,
+        "containerId": "e"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "label-too-tall": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "label-too-tall",
+            "message": "The label on this ellipse needs 24px but the container is 40px. Excalidraw clips it - make the container taller.",
+            "ids": [
+              "t",
+              "e"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "arrow and line labels skipped",
+    "input": [
+      {
+        "id": "a",
+        "type": "arrow",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "ta",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 100,
+        "text": "a",
+        "fontSize": 20,
+        "containerId": "a"
+      },
+      {
+        "id": "tl",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 100,
+        "text": "l",
+        "fontSize": 20,
+        "containerId": "l"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 4,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "deleted container makes orphan",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100,
+        "isDeleted": true
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "orphan",
+        "fontSize": 20,
+        "containerId": "r"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 1,
+        "problems": 1,
+        "counts": {
+          "orphan-label": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "orphan-label",
+            "message": "A bound label points at a container that is not in the scene.",
+            "ids": [
+              "t"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "zero size",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "n",
+        "type": "ellipse",
+        "x": 0,
+        "y": 0,
+        "width": -0.4,
+        "height": 0.9,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "text": "text",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 3,
+        "problems": 2,
+        "counts": {
+          "zero-size": 2
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "r"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A ellipse has no size (0x1) and will not be visible.",
+            "ids": [
+              "n"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "nonzero size",
+    "input": [
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "l",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 2,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "dangling arrow bindings",
+    "input": [
+      {
+        "id": "a",
+        "type": "arrow",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            10,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent",
+        "startBinding": {
+          "elementId": "missing1"
+        },
+        "endBinding": {
+          "elementId": "missing2"
+        }
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 1,
+        "problems": 2,
+        "counts": {
+          "dangling-binding": 2
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "dangling-binding",
+            "message": "An arrow's startBinding points at an element that no longer exists.",
+            "ids": [
+              "a"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "dangling-binding",
+            "message": "An arrow's endBinding points at an element that no longer exists.",
+            "ids": [
+              "a"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "valid arrow bindings",
+    "input": [
+      {
+        "id": "a",
+        "type": "arrow",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 0,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            10,
+            0
+          ]
+        ],
+        "backgroundColor": "transparent",
+        "startBinding": {
+          "elementId": "r"
+        },
+        "endBinding": null
+      },
+      {
+        "id": "r",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "stray element",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "c",
+        "type": "rectangle",
+        "x": 40,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "d",
+        "type": "rectangle",
+        "x": 60,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "e",
+        "type": "rectangle",
+        "x": 80,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "f",
+        "type": "rectangle",
+        "x": 100,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "stray",
+        "type": "rectangle",
+        "x": 5000,
+        "y": 5000,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 7,
+        "problems": 1,
+        "counts": {
+          "stray": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "stray",
+            "message": "A rectangle sits far away from everything else, at 5000,5000.",
+            "ids": [
+              "stray"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "six elements skip stray rule",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "c",
+        "type": "rectangle",
+        "x": 40,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "d",
+        "type": "rectangle",
+        "x": 60,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "e",
+        "type": "rectangle",
+        "x": 80,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "stray",
+        "type": "rectangle",
+        "x": 5000,
+        "y": 5000,
+        "width": 10,
+        "height": 10,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 6,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "exact duplicates",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 1.2,
+        "y": 2.3,
+        "width": 30,
+        "height": 40,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 1.4,
+        "y": 2.4,
+        "width": 30.4,
+        "height": 40.4,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "c",
+        "type": "rectangle",
+        "x": 1.4,
+        "y": 2.4,
+        "width": 30.4,
+        "height": 40.4,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 3,
+        "problems": 2,
+        "counts": {
+          "duplicate": 2
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two rectangle elements sit exactly on top of each other.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two rectangle elements sit exactly on top of each other.",
+            "ids": [
+              "a",
+              "c"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "duplicate endpoint matters",
+    "input": [
+      {
+        "id": "a",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            10,
+            10
+          ]
+        ],
+        "backgroundColor": "transparent"
+      },
+      {
+        "id": "b",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            -10,
+            -10
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 0,
+        "counts": {},
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "duplicate text and rounding endpoint",
+    "input": [
+      {
+        "id": "a",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 20,
+        "height": 20,
+        "text": "same",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 20,
+        "height": 20,
+        "text": "same",
+        "fontSize": 20
+      },
+      {
+        "id": "c",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            10.4,
+            10.4
+          ]
+        ],
+        "backgroundColor": "transparent"
+      },
+      {
+        "id": "d",
+        "type": "line",
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            10.49,
+            10.49
+          ]
+        ],
+        "backgroundColor": "transparent"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 4,
+        "problems": 5,
+        "counts": {
+          "text-collision": 1,
+          "line-through-text": 2,
+          "duplicate": 2
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"same\" and \"same\" overlap by 20x20px. Move one.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "A line runs through \"same\". Stop the leader at the edge of the label instead of crossing it.",
+            "ids": [
+              "a",
+              "c"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "line-through-text",
+            "message": "A line runs through \"same\". Stop the leader at the edge of the label instead of crossing it.",
+            "ids": [
+              "b",
+              "c"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two text elements sit exactly on top of each other.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two line elements sit exactly on top of each other.",
+            "ids": [
+              "c",
+              "d"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "per kind cap and limit",
+    "input": [
+      {
+        "id": "r0",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r1",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r2",
+        "type": "rectangle",
+        "x": 40,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r3",
+        "type": "rectangle",
+        "x": 60,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r4",
+        "type": "rectangle",
+        "x": 80,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r5",
+        "type": "rectangle",
+        "x": 100,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r6",
+        "type": "rectangle",
+        "x": 120,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r7",
+        "type": "rectangle",
+        "x": 140,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "r8",
+        "type": "rectangle",
+        "x": 160,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "a",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "a",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "b",
+        "fontSize": 20
+      }
+    ],
+    "options": {
+      "limit": 4
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 11,
+        "problems": 10,
+        "counts": {
+          "text-collision": 1,
+          "zero-size": 9
+        },
+        "truncated": true,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"a\" and \"b\" overlap by 40x20px. Move one.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "r0"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "r1"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "r2"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "limit does not set truncated",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "c",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {
+      "limit": 1
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 3,
+        "problems": 5,
+        "counts": {
+          "zero-size": 3,
+          "duplicate": 2
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "a"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "zero limit",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {
+      "limit": 0
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 1,
+        "problems": 1,
+        "counts": {
+          "zero-size": 1
+        },
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "null limit",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {
+      "limit": null
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 1,
+        "problems": 1,
+        "counts": {
+          "zero-size": 1
+        },
+        "truncated": false,
+        "findings": []
+      }
+    }
+  },
+  {
+    "name": "negative limit",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "b",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      }
+    ],
+    "options": {
+      "limit": -1
+    },
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 3,
+        "counts": {
+          "zero-size": 2,
+          "duplicate": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "a"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "b"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "severity and rule order",
+    "input": [
+      {
+        "id": "orphan",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 20,
+        "height": 20,
+        "text": "orphan",
+        "fontSize": 20,
+        "containerId": "missing"
+      },
+      {
+        "id": "zero",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "panel",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "tight",
+        "type": "text",
+        "x": 20,
+        "y": 20,
+        "width": 70,
+        "height": 20,
+        "text": "tight",
+        "fontSize": 20
+      },
+      {
+        "id": "hidden",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "hidden",
+        "fontSize": 20
+      },
+      {
+        "id": "cover",
+        "type": "rectangle",
+        "x": 20,
+        "y": 0,
+        "width": 100,
+        "height": 100,
+        "backgroundColor": "#123456",
+        "opacity": 100
+      },
+      {
+        "id": "collision",
+        "type": "text",
+        "x": 10,
+        "y": 10,
+        "width": 40,
+        "height": 20,
+        "text": "collision",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 7,
+        "problems": 8,
+        "counts": {
+          "text-hidden": 3,
+          "text-collision": 3,
+          "orphan-label": 1,
+          "zero-size": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"orphan\" is covered for ~20px by a filled rectangle drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "orphan",
+              "panel"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"tight\" is covered for ~70px by a filled rectangle drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "tight",
+              "cover"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-hidden",
+            "message": "\"hidden\" is covered for ~30px by a filled rectangle drawn after it. Move the text, shrink the shape, or draw the shape first.",
+            "ids": [
+              "hidden",
+              "cover"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"tight\" and \"hidden\" overlap by 30x10px. Move one.",
+            "ids": [
+              "tight",
+              "hidden"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"tight\" and \"collision\" overlap by 30x10px. Move one.",
+            "ids": [
+              "tight",
+              "collision"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"hidden\" and \"collision\" overlap by 40x20px. Move one.",
+            "ids": [
+              "hidden",
+              "collision"
+            ]
+          },
+          {
+            "severity": "error",
+            "kind": "orphan-label",
+            "message": "A bound label points at a container that is not in the scene.",
+            "ids": [
+              "orphan"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "zero"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "utf16 message slices",
+    "input": [
+      {
+        "id": "a",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "fontSize": 20
+      },
+      {
+        "id": "b",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 20,
+        "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "fontSize": 20
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 2,
+        "counts": {
+          "text-collision": 1,
+          "duplicate": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "error",
+            "kind": "text-collision",
+            "message": "\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀\" and \"😀😀😀😀😀😀😀😀😀😀😀😀😀😀\" overlap by 40x20px. Move one.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "severity": "warning",
+            "kind": "duplicate",
+            "message": "Two text elements sit exactly on top of each other.",
+            "ids": [
+              "a",
+              "b"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "missing optional numeric fields",
+    "input": [
+      {
+        "id": "a",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "id": "t",
+        "type": "text",
+        "x": 0,
+        "y": 0,
+        "text": "x"
+      }
+    ],
+    "options": {},
+    "expected": {
+      "ok": true,
+      "value": {
+        "elements": 2,
+        "problems": 1,
+        "counts": {
+          "zero-size": 1
+        },
+        "truncated": false,
+        "findings": [
+          {
+            "severity": "warning",
+            "kind": "zero-size",
+            "message": "A rectangle has no size (0x0) and will not be visible.",
+            "ids": [
+              "a"
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

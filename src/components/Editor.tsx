@@ -530,7 +530,7 @@ export default function Editor({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="app-drag titlebar-inset hairline-b flex items-center gap-3 px-4 py-2.5">
+      <header className="hairline-b flex items-center gap-3 px-4 py-2.5">
         <button
           onClick={leave}
           title="All scenes"
