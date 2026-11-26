@@ -9,7 +9,7 @@ type
     status*: int
 
   LastKnownState = object
-    elements, appState: JsonNode
+    text: string
 
   CachedScene = object
     rev: string
@@ -28,8 +28,8 @@ type
     sceneCache: OrderedTable[string, CachedScene]
 
 const
-  LastKnownMax = 5
-  SceneCacheMax = 5
+  LastKnownBudget = 16 * 1024 * 1024
+  SceneCacheMax = 1
 
 var groupRng = initRand(int64(nonce()) shl 32 or int64(nonce()))
 
@@ -262,11 +262,11 @@ proc readPayload(api: AgentApi; sceneId: string): JsonNode =
 
 proc remember(api: AgentApi; id: string; payload: JsonNode) =
   api.lastKnown.del(id)
-  api.lastKnown[id] = LastKnownState(
-    elements: payload.field("elements"),
-    appState: payload.field("appState")
-  )
-  while api.lastKnown.len > LastKnownMax:
+  api.lastKnown[id] = LastKnownState(text: $payload)
+  while api.lastKnown.len > 1:
+    var total = 0
+    for state in api.lastKnown.values: total += state.text.len
+    if total <= LastKnownBudget: break
     api.lastKnown.del(oldestKey(api.lastKnown))
 
 proc observe*(api: AgentApi; id: string; payload: JsonNode) =
@@ -1163,11 +1163,22 @@ proc noteExternalChange*(api: AgentApi; sceneId: string): JsonNode =
   let path = api.vault.scenePath(sceneId)
   if path.isSome and api.history.isClaimed(sceneId, path.get): return newJNull()
   if not api.lastKnown.hasKey(sceneId): return newJNull()
-  let previous = api.lastKnown[sceneId]
-  let payload = %*{"elements": previous.elements, "appState": previous.appState}
+  var previous: JsonNode
+  try:
+    previous = parseJson(api.lastKnown[sceneId].text)
+  except CatchableError:
+    return newJNull()
+  let elements =
+    if isNullish(previous.field("elements")): newJArray()
+    else: previous.field("elements")
+  let appState =
+    if isNullish(previous.field("appState")): newJObject()
+    else: previous.field("appState")
   var entry: JsonNode
   try:
-    entry = api.history.take(sceneId, payload, "edited outside Sketchdex", "external")
+    entry = api.history.take(sceneId, %*{
+      "elements": elements, "appState": appState
+    }, "edited outside Sketchdex", "external")
   except CatchableError:
     return newJNull()
   try:
