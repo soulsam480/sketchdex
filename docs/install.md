@@ -14,16 +14,10 @@ It installs `~/.local/bin/sketchdex` and the UI assets under
 `~/.local/share/sketchdex`. Override the prefix with `SKETCHDEX_PREFIX`, or a
 specific version with `SKETCHDEX_VERSION`.
 
-Other ways:
-
-1. Download the release tarball for your platform from
-   `https://github.com/soulsam480/sketchdex/releases`, extract it, and put the
-   binary on `PATH`.
-2. Install the npm package, which ships the same binary:
-   `npm install -g sketchdex`.
-
-`npx -y sketchdex mcp` also works, but npm is the parent process. Prefer the
-direct binary when you want no Node process at all.
+Or download the release tarball for your platform from
+`https://github.com/soulsam480/sketchdex/releases`, extract it, and put the
+binary on `PATH`. The tarball holds the binary and the `dist/` folder it serves,
+so keep them together.
 
 Set `SKETCHDEX_BROWSER` to a Chromium-based browser binary before using
 `render_scene`. There is no discovery. Everything else works without a

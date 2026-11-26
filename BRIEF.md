@@ -36,7 +36,7 @@ curl -s localhost:5173/api/agent/describe \
   -d '{"scene":"Project Centis"}'
 ```
 
-If nothing answers on 5173, start it: `npx sketchdex app` (or `npm run dev` in
+If nothing answers on 5173, start it: `sketchdex app` (or `npm run dev` in
 a checkout).
 
 ### 3. Node (no server needed)

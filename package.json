@@ -1,6 +1,6 @@
 {
   "name": "sketchdex",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "An MCP server that lets AI agents draw hand-drawn Excalidraw diagrams. Real .excalidraw files on your machine, with history, rendering and a local library app.",
   "keywords": [
     "mcp",
@@ -18,26 +18,14 @@
   "homepage": "https://sketchdex.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lucasr1b/sketchdex.git"
+    "url": "git+https://github.com/soulsam480/sketchdex.git"
   },
   "bugs": {
-    "url": "https://github.com/lucasr1b/sketchdex/issues"
+    "url": "https://github.com/soulsam480/sketchdex/issues"
   },
   "license": "MIT",
   "author": "Lucas Ribeiro",
-  "mcpName": "io.github.lucasr1b/sketchdex",
   "type": "module",
-  "bin": {
-    "sketchdex": "bin/sketchdex"
-  },
-  "files": [
-    "bin/",
-    "dist/",
-    "BRIEF.md",
-    "docs/",
-    "README.md",
-    "LICENSE"
-  ],
   "engines": {
     "node": ">=20"
   },
@@ -55,8 +43,7 @@
     "test:server:nim": "node scripts/test-server-nim.mjs",
     "test:server": "node scripts/build-server.mjs && node scripts/test-server-nim.mjs && node test/server.e2e.mjs",
     "preview": "vite preview",
-    "prepare": "node scripts/patch-excalidraw.mjs && node scripts/vendor-fonts.mjs",
-    "prepublishOnly": "npm run lint && npm run build && npm test && node scripts/check-package.mjs"
+    "prepare": "node scripts/patch-excalidraw.mjs && node scripts/vendor-fonts.mjs"
   },
   "dependencies": {},
   "devDependencies": {
@@ -75,5 +62,6 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
-  }
+  },
+  "private": true
 }

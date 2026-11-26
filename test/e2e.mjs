@@ -1,8 +1,8 @@
 /**
  * The whole product, the way a user gets it.
  *
- * Packs the repo into a tarball, installs it into a throwaway project, and
- * drives the installed `sketchdex` binary through a real MCP client over stdio:
+ * Stages the release layout in a throwaway folder and drives the `sketchdex`
+ * binary through a real MCP client over stdio:
  * list tools, create a scene, edit it as a delta, render it through whatever
  * browser the machine has, check it, and read the history back. Then starts
  * `sketchdex app` and probes the library, the API and the HTTP MCP endpoint.
@@ -32,13 +32,6 @@ const fail = (msg) => {
 };
 const assert = (cond, msg) => cond || fail(msg);
 
-const npm = (args, cwd) => {
-  // npm is a .cmd on Windows, which Node will only spawn through a shell
-  const out = spawnSync("npm", args, { cwd, shell: win, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  if (out.status !== 0) fail(`npm ${args.join(" ")} failed:\n${out.stderr.slice(-1500)}`);
-  return out.stdout;
-};
-
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "sketchdex-e2e-"));
 const testStart = Date.now();
 const vault = path.join(tmp, "vault");
@@ -49,32 +42,26 @@ const cleanup = () => {
 };
 process.on("exit", cleanup);
 
-/* ─── 1. pack and install ───────────────────────────────────────────── */
+/* ─── 1. stage the release layout ───────────────────────────────────── */
 
 assert(fs.existsSync(path.join(root, "dist", "render.html")), "dist/ is missing; run npm run build first");
-// --ignore-scripts: the prepare hook prints, and its work is already done
-const packOut = npm(["pack", "--json", "--ignore-scripts", "--pack-destination", tmp], root);
-const packed = JSON.parse(packOut.slice(packOut.indexOf("[")));
-const tarball = path.join(tmp, packed[0].filename);
-log(`packed ${packed[0].filename} (${(packed[0].size / 1024).toFixed(0)} KB, ${packed[0].entryCount} files)`);
-
-const project = path.join(tmp, "project");
-fs.mkdirSync(project);
-fs.writeFileSync(path.join(project, "package.json"), JSON.stringify({ name: "e2e", private: true, type: "module" }));
-npm(["install", "--no-fund", "--no-audit", "--loglevel=error", tarball], project);
-const bin = path.join(project, "node_modules", "sketchdex", "bin", win ? "sketchdex.exe" : "sketchdex");
-assert(fs.existsSync(bin), `installed package has no bin/${win ? "sketchdex.exe" : "sketchdex"}`);
-assert(
-  !fs.existsSync(path.join(project, "node_modules", "electron")) &&
-    !fs.existsSync(path.join(project, "node_modules", "@excalidraw")),
-  "install pulled in build-only dependencies",
-);
-log("installed into a clean project, runtime deps only");
+const pkg = path.join(tmp, "pkg");
+fs.mkdirSync(pkg);
+const binName = win ? "sketchdex.exe" : "sketchdex";
+const bin = path.join(pkg, binName);
+fs.copyFileSync(path.join(root, "bin", binName), bin);
+if (!win) fs.chmodSync(bin, 0o755);
+fs.cpSync(path.join(root, "dist"), path.join(pkg, "dist"), { recursive: true });
+for (const file of ["README.md", "BRIEF.md", "install.sh"]) {
+  fs.copyFileSync(path.join(root, file), path.join(pkg, file));
+}
+log("staged the release layout, binary beside dist and the docs");
 
 /* ─── 2. the CLI ────────────────────────────────────────────────────── */
 
+const expectedVersion = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
 const version = spawnSync(bin, ["--version"], { encoding: "utf8" }).stdout.trim();
-assert(version === packed[0].version, `--version printed ${version}, expected ${packed[0].version}`);
+assert(version === expectedVersion, `--version printed ${version}, expected ${expectedVersion}`);
 const printedVault = spawnSync(bin, ["vault", "--vault", vault], { encoding: "utf8" }).stdout.trim();
 assert(path.resolve(printedVault) === path.resolve(vault), `vault flag not honoured: ${printedVault}`);
 const docsOut = spawnSync(bin, ["docs", "install"], { encoding: "utf8" });

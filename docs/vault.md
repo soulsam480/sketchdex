@@ -1,7 +1,7 @@
 # The vault
 
 Scenes are plain `.excalidraw` files in one folder, the vault. The default is
-`~/Documents/sketchdex`. `npx sketchdex vault` prints the folder the server
+`~/Documents/sketchdex`. `sketchdex vault` prints the folder the server
 is actually using.
 
 ```
@@ -35,7 +35,7 @@ The folder is created on first use. Existing scenes do not move on their
 own; copy the `scenes/` folder across and the index rebuilds.
 
 The app and the MCP server must point at the same folder to see the same
-scenes. `npx sketchdex app --vault /path` matches the flag above.
+scenes. `sketchdex app --vault /path` matches the flag above.
 
 ## History and trash
 

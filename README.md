@@ -1,8 +1,5 @@
 # sketchdex
 
-[![ci](https://github.com/lucasr1b/sketchdex/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasr1b/sketchdex/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/sketchdex)](https://www.npmjs.com/package/sketchdex)
-
 Give your agent a whiteboard. [sketchdex.dev](https://sketchdex.dev)
 
 Sketchdex is an MCP server that lets Claude, Codex, Cursor and any other MCP
@@ -16,8 +13,8 @@ real thing. MIT.
 
 ## Install
 
-Sketchdex is a native binary. Node 20 or newer is only needed if you install
-from npm or build from source. Rendering (`render_scene`) needs a Chromium
+Sketchdex is a native binary. Node 20 or newer is only needed to build from
+source. Rendering (`render_scene`) needs a Chromium
 browser and `SKETCHDEX_BROWSER` pointing at it. Everything else works without
 one.
 
@@ -26,8 +23,8 @@ curl -fsSL https://raw.githubusercontent.com/soulsam480/sketchdex/main/install.s
 ```
 
 That installs `~/.local/bin/sketchdex` and the UI assets under
-`~/.local/share/sketchdex`. Or install with `npm install -g sketchdex`, or
-download the release tarball. The MCP command is `sketchdex mcp`.
+`~/.local/share/sketchdex`. Or download the release tarball. The MCP command is
+`sketchdex mcp`.
 
 The quickest way to wire an agent is to paste this into one that can run
 commands:
@@ -167,7 +164,7 @@ paper and ink rules, and the things that will bite.
 ## Development
 
 ```bash
-git clone https://github.com/lucasr1b/sketchdex
+git clone https://github.com/soulsam480/sketchdex
 cd sketchdex
 npm install          # also retunes Excalidraw's colour picker for dark paper
 npm run dev          # app + API + HTTP MCP on http://localhost:5173
@@ -181,8 +178,8 @@ For an MCP client pointed at a checkout, run `npm run build:server`, then use
 changes. The native server does not hot-reload.
 
 `npm run lint`, `npx tsc -p tsconfig.app.json --noEmit` and `npm test` before
-committing. The test packs the package, installs it into a clean project and
-drives it through a real MCP client, including a render.
+committing. The test stages the release layout, the binary beside `dist/` and
+the docs, and drives it through a real MCP client, including a render.
 [`AGENTS.md`](AGENTS.md) maps the codebase and the rules that must survive
 edits.
 

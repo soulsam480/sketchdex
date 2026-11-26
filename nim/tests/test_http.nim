@@ -499,7 +499,7 @@ suite "sketchdex CLI":
     let binary = configuredBinary()
     let version = runCli(binary, ["--version"])
     check version.exitCode == 0
-    check version.output == "0.6.0\n"
+    check version.output == "0.6.1\n"
     check version.stderr == ""
     let docs = runCli(binary, ["docs", "tools"])
     check docs.exitCode == 0
