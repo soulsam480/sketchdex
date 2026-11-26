@@ -60,7 +60,10 @@ catalog, and Install comes back to this scene and lands in the panel. Items live
 in `library.excalidrawlib` at the vault root, not in browser storage, so they
 survive a cleared cache and are the same in every browser. The agent installs
 from the same catalog with `browse_libraries` and `install_library`, and an
-install shows up in an open panel without a reload.
+install shows up in an open panel without a reload. It finds an item with
+`list_library`, inspects it with `read_library_item`, and places it with
+`insert_library_item`. The placed item becomes ordinary editable elements in the
+scene. The library file is never rewritten by an insert.
 
 **Comments** is a mode, not a sidebar. Click **Comments** (the count is how many
 are open in the scene), then click a shape: the canvas does not select, move or

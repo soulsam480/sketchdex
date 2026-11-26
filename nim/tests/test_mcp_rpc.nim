@@ -93,8 +93,19 @@ proc browseLibraries(api: FakeAgent; query: string; args: JsonNode): JsonNode =
 proc installLibrary(api: FakeAgent; refOrUrl: string): JsonNode =
   api.record("install_library", %*{"library": refOrUrl})
 
-proc listLibrary(api: FakeAgent): JsonNode =
-  api.record("list_library", newJObject())
+proc listLibrary(api: FakeAgent; query: string; kind: string; limit: int): JsonNode =
+  api.record("list_library", %*{
+    "query": query, "type": kind, "limit": limit,
+  })
+
+proc readLibraryItem(api: FakeAgent; item: string; full: bool): JsonNode =
+  api.record("read_library_item", %*{"item": item, "full": full})
+
+proc insertLibraryItem(api: FakeAgent; idOrName, item: string; x, y: float;
+    label: string): JsonNode =
+  api.record("insert_library_item", %*{
+    "scene": idOrName, "item": item, "x": x, "y": y, "label": label,
+  })
 
 proc restoreSnapshot(api: FakeAgent; idOrName, snapId: string): JsonNode =
   api.record("restore_snapshot", %*{"scene": idOrName, "snapshot": snapId})
@@ -240,6 +251,7 @@ suite "MCP JSON-RPC":
         "name": "sketchdex", "version": version,
       }
       check response["result"]["instructions"].getStr == INSTRUCTIONS
+      check INSTRUCTIONS.contains("insert_library_item")
 
   test "initialize falls back to the latest supported version":
     let response = rpc(request(newJInt(1), "initialize", %*{
@@ -252,6 +264,7 @@ suite "MCP JSON-RPC":
   test "tools list returns the shared definitions":
     let response = rpc(request(newJInt(1), "tools/list"))
     check response["result"]["tools"] == TOOLS
+    check response["result"]["tools"].len == 28
 
   test "tools call validates required keys before dispatch":
     let body = request(newJInt(1), "tools/call", %*{
@@ -479,3 +492,37 @@ suite "MCP JSON-RPC":
     })
     check api.calls[^1].name == "update_comment"
     check api.calls[^1].args["action"].getStr == "resolve"
+
+  test "the generic adapter passes library lookup and insert arguments":
+    let api = FakeAgent()
+    discard dispatchAgent(api, "list_library", %*{
+      "query": "home icon", "type": "rectangle", "limit": 7,
+    })
+    check api.calls[^1].name == "list_library"
+    check api.calls[^1].args["query"].getStr == "home icon"
+    check api.calls[^1].args["type"].getStr == "rectangle"
+    check api.calls[^1].args["limit"].getInt == 7
+
+    discard dispatchAgent(api, "list_library", newJObject())
+    check api.calls[^1].args["limit"].getInt == 20
+
+    discard dispatchAgent(api, "read_library_item", %*{
+      "item": "a1", "full": true,
+    })
+    check api.calls[^1].name == "read_library_item"
+    check api.calls[^1].args["item"].getStr == "a1"
+    check api.calls[^1].args["full"].getBool
+
+    discard dispatchAgent(api, "insert_library_item", %*{
+      "scene": "board", "item": "a1", "x": 120.5, "y": 40, "label": "place icon",
+    })
+    check api.calls[^1].name == "insert_library_item"
+    check api.calls[^1].args["x"].getFloat == 120.5
+    check api.calls[^1].args["y"].getFloat == 40.0
+    check api.calls[^1].args["label"].getStr == "place icon"
+
+    discard dispatchAgent(api, "insert_library_item", %*{
+      "scene": "board", "item": "a1", "label": "place icon",
+    })
+    check api.calls[^1].args["x"].getFloat == 0.0
+    check api.calls[^1].args["y"].getFloat == 0.0

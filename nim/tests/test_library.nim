@@ -1,4 +1,4 @@
-import std/[json, options, os, tempfiles, unittest]
+import std/[json, options, os, strutils, tempfiles, unittest]
 
 import ../server/[library, vault]
 
@@ -256,3 +256,93 @@ suite "catalog lookup":
     except library.LibraryError as error:
       status = error.status
     check status == 400
+
+proc installedItems(): JsonNode =
+  %*[
+    %*{
+      "id": "a1", "name": "Blue Home",
+      "elements": %*[
+        %*{"type": "rectangle", "x": 0, "y": 0, "width": 10, "height": 10,
+          "text": "home icon"}
+      ]
+    },
+    %*{
+      "id": "a2", "name": "Red Home",
+      "elements": %*[
+        %*{"type": "arrow", "x": 5, "y": 5, "width": 20, "height": 0,
+          "originalText": "go home"}
+      ]
+    },
+    %*{
+      "id": "a3",
+      "elements": %*[
+        %*{"type": "text", "x": 2, "y": 3, "width": 40, "height": 12,
+          "text": "plain note"}
+      ]
+    }
+  ]
+
+suite "installed item lookup":
+  var store: LibraryStore
+  var root: string
+
+  setup:
+    root = createTempDir("sketchdex-library-lookup-", "", getTempDir())
+    store = newLibraryStore(newVault(root))
+    discard store.replace(installedItems(), none(string))
+
+  teardown:
+    removeDir(root)
+
+  test "findItem resolves ids exact names case-insensitive names and fragments":
+    check store.findItem("a1").get["id"].getStr == "a1"
+    check store.findItem("Blue Home").get["id"].getStr == "a1"
+    check store.findItem("blue home").get["id"].getStr == "a1"
+    check store.findItem("Red H").get["id"].getStr == "a2"
+    check store.findItem("missing").isNone
+
+  test "an ambiguous fragment names its candidates":
+    var status = 0
+    var message = ""
+    try:
+      discard store.findItem("home")
+    except library.LibraryError as error:
+      status = error.status
+      message = error.msg
+    check status == 400
+    check message.contains("matches 2 items")
+    check message.contains("a1 Blue Home")
+    check message.contains("a2 Red Home")
+
+  test "matchingItems filters by type and text with token AND":
+    let byType = store.matchingItems("", "arrow", 20)
+    check byType["items"].len == 1
+    check byType["items"][0]["id"].getStr == "a2"
+    check store.matchingItems("go home", "", 20)["items"][0]["id"].getStr == "a2"
+    check store.matchingItems("home rectangle", "", 20)["items"][0]["id"].getStr == "a1"
+    check store.matchingItems("home missing", "", 20)["items"].len == 0
+    check store.matchingItems("arrow", "", 20)["items"][0]["id"].getStr == "a2"
+
+  test "matchingItems caps the limit and keeps the installed total":
+    check store.matchingItems("", "", 500)["total"].getInt == 3
+    check store.matchingItems("", "", 500)["items"].len == 3
+    check store.matchingItems("", "", 0)["items"].len == 0
+    var many = newJArray()
+    for index in 0 ..< 150:
+      many.add(%*{"id": "id-" & $index, "elements": %*[]})
+    discard store.replace(many, none(string))
+    check store.matchingItems("", "", 500)["items"].len == 100
+    check store.matchingItems("", "", 20)["items"].len == 20
+
+  test "a summary carries types bounds and text snippets":
+    let row = store.matchingItems("", "", 20)["items"][0]
+    check row["id"].getStr == "a1"
+    check row["name"].getStr == "Blue Home"
+    check row["elements"].getInt == 1
+    check row["types"]["rectangle"].getInt == 1
+    check row["bounds"] == %*{
+      "x": 0, "y": 0, "width": 10, "height": 10
+    }
+    check row["text"][0].getStr == "home icon"
+    let unnamed = store.matchingItems("plain note", "", 20)["items"][0]
+    check not unnamed.hasKey("name")

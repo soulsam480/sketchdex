@@ -295,7 +295,7 @@ proc incrementInteger(integer: string): string =
   else: digits.setLen(max(0, digits.len - 1))
   nextHead & digits
 
-proc indexFactory(existing: JsonNode): proc(): string =
+proc indexFactory*(existing: JsonNode): proc(): string =
   if not existing.isArr:
     raise newException(ValueError, "existing is not iterable")
   var taken: seq[string]

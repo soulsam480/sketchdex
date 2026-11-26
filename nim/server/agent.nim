@@ -1,7 +1,7 @@
 import std/[algorithm, json, math, options, random, re, sets, strutils, tables,
   times, unicode]
 
-import ../core/[elements, jsvalue, paper, random_ids]
+import ../core/[clone, elements, jsvalue, paper, random_ids]
 import ./[comments, history, inspect, library, svg, vault]
 
 type
@@ -1209,24 +1209,54 @@ proc clearHistory*(api: AgentApi; idOrName: string): JsonNode =
   let meta = resolve(api, idOrName)
   %*{"entries": api.history.clear(meta["id"].getStr)}
 
-proc listLibrary*(api: AgentApi): JsonNode =
-  let items = api.library.readItems()
-  var shown = newJArray()
-  for item in items:
-    let elements = item.field("elements")
-    var entry = %*{
-      "id": item.field("id").stringOr(""),
-      "elements": if elements.isArr: elements.len else: 0
-    }
-    let name = item.field("name")
-    if not name.isNil and name.kind == JString: entry["name"] = name
-    shown.add(entry)
+proc libraryNotFound(key: string) {.noreturn.} =
+  let error = newException(AgentError,
+    "no library item matching \"" & key & "\"")
+  error.status = 404
+  raise error
+
+proc listLibrary*(api: AgentApi; query = ""; kind = ""; limit = 20): JsonNode =
+  let listed = api.library.matchingItems(query, kind, limit)
   let current = api.library.rev
-  %*{
-    "rev": if current.isSome: %current.get else: newJNull(),
-    "total": items.len,
-    "items": shown
-  }
+  listed["rev"] = if current.isSome: %current.get else: newJNull()
+  listed
+
+proc readLibraryItem*(api: AgentApi; item: string; full = false): JsonNode =
+  let found = api.library.findItem(item)
+  if found.isNone: libraryNotFound(item)
+  let stored = found.get
+  result = itemSummary(stored)
+  if full:
+    result["elementCount"] = result["elements"]
+    result["elements"] = if stored.field("elements").isArr:
+      copyNode(stored["elements"]) else: newJArray()
+
+proc insertLibraryItem*(api: AgentApi; idOrName, itemKey: string; x, y: float;
+    label: string): JsonNode =
+  let found = api.library.findItem(itemKey)
+  if found.isNone: libraryNotFound(itemKey)
+  let stored = found.get
+  let source = stored.field("elements")
+  mutate(api, idOrName, label) do (payload, meta: JsonNode) -> Mutation:
+    let cloned = cloneElementsForInsert(source, payload["elements"], x, y, nowMs())
+    var elements = newJArray()
+    for element in payload["elements"]: elements.add(element)
+    for element in cloned.elements: elements.add(element)
+    var warningNodes = newJArray()
+    for warning in cloned.warnings: warningNodes.add(%warning)
+    var ids = newJArray()
+    for element in cloned.elements: ids.add(copyNode(element.field("id")))
+    var entry = %*{
+      "itemId": stored.field("id").stringOr(""),
+      "added": cloned.elements.len,
+      "ids": ids,
+      "idMap": cloned.idMap,
+      "bounds": bounds(cloned.elements),
+      "warnings": warningNodes
+    }
+    let name = stored.field("name")
+    if not name.isNil and name.kind == JString: entry["itemName"] = name
+    Mutation(elements: elements, result: entry)
 
 proc browseLibraries*(api: AgentApi; query: string; args: JsonNode): JsonNode =
   let catalog = loadCatalog()

@@ -18,7 +18,9 @@ The files are the truth. `index.json` is rebuilt from them if it is lost, so
 you can copy, sync or version the folder freely. Any scene opens on
 excalidraw.com or in any Excalidraw editor as it is. The library file is the
 same format as an Excalidraw library export, so it travels with the folder and
-opens there too.
+opens there too. The agent can insert an installed item into a scene. That write
+copies the item's elements with fresh identity fields and leaves the library
+file untouched, so the item stays reusable in every scene.
 
 ## Moving it
 

@@ -19,7 +19,8 @@ const
     "delete", "move", "replace", "write", "background", "snapshot", "svg",
     "check", "history", "restore", "discard", "clear", "build",
     "comment-add", "comment-list", "comment-update",
-    "library-browse", "library-install", "library-list"
+    "library-browse", "library-install", "library-list", "library-item",
+    "library-insert"
   ]
 
 type
@@ -415,6 +416,12 @@ proc intField(body: JsonNode; key: string; fallback: int): int =
   elif value.kind == JFloat: int(value.getFloat)
   else: fail(400, key & " must be a number")
 
+proc floatField(body: JsonNode; key: string; fallback: float): float =
+  let value = body.field(key)
+  if value.isNil or value.kind == JNull: fallback
+  elif value.isFiniteNumber: floatOr(value, fallback)
+  else: fail(400, key & " must be a number")
+
 proc revisionOption(body: JsonNode): Option[string] =
   let value = body.field("ifRev")
   if value.isNil or value.kind == JNull:
@@ -745,7 +752,15 @@ proc routeAgent(req: IncomingRequest, server: HttpServer) {.async.} =
   of "library-install":
     result = api.installLibrary(textField(body, "library"))
   of "library-list":
-    result = api.listLibrary()
+    result = api.listLibrary(textField(body, "query"), textField(body, "type"),
+      intField(body, "limit", 20))
+  of "library-item":
+    result = api.readLibraryItem(textField(body, "item"),
+      boolField(body, "full", false))
+  of "library-insert":
+    result = api.insertLibraryItem(textField(body, "scene"),
+      textField(body, "item"), floatField(body, "x", 0.0),
+      floatField(body, "y", 0.0), textField(body, "label"))
   of "build":
     let specs = body.field("specs")
     if specs.isNil:

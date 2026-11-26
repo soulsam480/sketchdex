@@ -432,6 +432,19 @@ proc intArgument(args: JsonNode; key: string; fallback: int): int =
     return int(value.getFloat)
   raise newException(ValueError, key & " must be a number")
 
+proc floatArgument(args: JsonNode; key: string; fallback: float): float =
+  let value = argument(args, key)
+  if value.isNil or value.kind == JNull: return fallback
+  if value.kind == JInt: return float(value.getInt)
+  if value.kind == JFloat and finite(value.getFloat): return value.getFloat
+  raise newException(ValueError, key & " must be a number")
+
+proc boolArgument(args: JsonNode; key: string; fallback: bool): bool =
+  let value = argument(args, key)
+  if value.isNil or value.kind == JNull: return fallback
+  if value.kind == JBool: return value.getBool
+  raise newException(ValueError, key & " must be a boolean")
+
 proc runtimeInfo(vaultPath: string): JsonNode =
   let uptime = (getMonoTime() - ProcessStartedMono).inSeconds.float
   %*{
@@ -474,7 +487,15 @@ proc dispatchAgent*[T](api: T; name: string; args: JsonNode;
   of "install_library":
     api.installLibrary(stringArgument(args, "library", ""))
   of "list_library":
-    api.listLibrary()
+    api.listLibrary(stringArgument(args, "query", ""),
+      stringArgument(args, "type", ""), intArgument(args, "limit", 20))
+  of "read_library_item":
+    api.readLibraryItem(stringArgument(args, "item", ""),
+      boolArgument(args, "full", false))
+  of "insert_library_item":
+    api.insertLibraryItem(stringArgument(args, "scene", ""),
+      stringArgument(args, "item", ""), floatArgument(args, "x", 0.0),
+      floatArgument(args, "y", 0.0), stringArgument(args, "label", ""))
   of "describe_scene":
     let scene = stringArgument(args, "scene", "")
     api.describeScene(scene, intArgument(args, "limit", 400),

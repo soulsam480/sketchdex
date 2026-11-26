@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
@@ -226,7 +227,7 @@ async function runStdio(vault) {
     assert.equal(initialized.id, 1);
     assert.equal(initialized.result.serverInfo.name, "sketchdex");
     assert.equal(listed.id, 2);
-    assert.equal(listed.result.tools.length, 26);
+    assert.equal(listed.result.tools.length, 28);
     assert.equal(scenes.id, 3);
     assert.ok(Array.isArray(JSON.parse(scenes.result.content[0].text)));
 
@@ -377,6 +378,80 @@ async function main() {
   state.sse = null;
   log("SSE scene event received");
 
+  const libRect = {
+    type: "rectangle", id: "e2e-lib-rect", x: 10, y: 20, width: 100, height: 50,
+    strokeColor: "#e8e6e3", backgroundColor: "#2b6b3a", fillStyle: "solid",
+    strokeWidth: 2, strokeStyle: "solid", roughness: 1, opacity: 100, angle: 0,
+    seed: 11, version: 2, versionNonce: 12, updated: 1764000000000,
+    groupIds: [], frameId: null, roundness: { type: 3 }, isDeleted: false,
+    link: null, locked: false,
+    boundElements: [{ id: "e2e-lib-text", type: "text" }],
+  };
+  const libText = {
+    type: "text", id: "e2e-lib-text", x: 15, y: 25, width: 90, height: 20,
+    text: "Library label", originalText: "Library label", fontSize: 20,
+    fontFamily: 5, textAlign: "left", verticalAlign: "top",
+    containerId: "e2e-lib-rect", groupIds: [], frameId: null,
+    strokeColor: "#e8e6e3", backgroundColor: "transparent", fillStyle: "solid",
+    strokeWidth: 2, strokeStyle: "solid", roughness: 1, opacity: 100, angle: 0,
+    seed: 13, version: 1, versionNonce: 14, updated: 1764000000000,
+    boundElements: [], isDeleted: false, link: null, locked: false,
+    roundness: null,
+  };
+  const libFixture = await new Promise((resolve) => {
+    const fixtureServer = http.createServer((_req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({
+        type: "excalidrawlib", version: 1, source: "e2e",
+        library: [[libRect, libText]],
+      }));
+    });
+    fixtureServer.listen(0, "127.0.0.1", () => resolve({
+      fixtureServer,
+      url: `http://127.0.0.1:${fixtureServer.address().port}/pack.excalidrawlib`,
+    }));
+  });
+  const installed = await agent("library-install", { library: libFixture.url });
+  assert.equal(installed.added, 1);
+  libFixture.fixtureServer.close();
+  const libPath = path.join(vault, "library.excalidrawlib");
+  const libBytes = fs.readFileSync(libPath);
+  const listedLib = await agent("library-list", {
+    query: "Library label", type: "rectangle",
+  });
+  assert.equal(listedLib.total, 1);
+  assert.equal(listedLib.items.length, 1);
+  assert.equal(listedLib.items[0].types.rectangle, 1);
+  assert.equal(listedLib.items[0].text[0], "Library label");
+  const itemId = listedLib.items[0].id;
+  const compact = await agent("library-item", { item: itemId });
+  assert.equal(compact.elements, 2);
+  const complete = await agent("library-item", { item: itemId, full: true });
+  assert.equal(complete.elements.length, 2);
+  const placed = await agent("library-insert", {
+    scene: created.sceneId, item: itemId, x: 700, y: 120,
+    label: "place the library label",
+  });
+  assert.equal(placed.added, 2);
+  const sourceIds = new Set([libRect.id, libText.id]);
+  for (const id of placed.ids) assert.ok(!sourceIds.has(id), `reused source id ${id}`);
+  assert.equal(placed.bounds.x, 700);
+  assert.equal(placed.bounds.y, 120);
+  assert.deepEqual(fs.readFileSync(libPath), libBytes);
+  const afterInsert = await readScene();
+  const clonedText = afterInsert.elements.find((element) => element.text === "Library label");
+  assert.ok(clonedText);
+  assert.equal(clonedText.containerId, placed.idMap[libRect.id]);
+  const historyAfter = await agent("history", { scene: created.sceneId });
+  assert.ok(historyAfter.entries.some((entry) => entry.label === "place the library label"));
+  const second = await agent("library-insert", {
+    scene: created.sceneId, item: itemId, x: 900, y: 300,
+    label: "place the library label again",
+  });
+  assert.equal(second.added, 2);
+  assert.equal(second.ids.some((id) => placed.ids.includes(id)), false);
+  log("library item listed, read and inserted twice without rewriting the library");
+
   let rpcId = 0;
   const rpc = async (method, params) => {
     const id = ++rpcId;
@@ -406,17 +481,17 @@ async function main() {
   });
   assert.equal(initialized.serverInfo.name, "sketchdex");
   const tools = await rpc("tools/list");
-  assert.equal(tools.tools.length, 26);
+  assert.equal(tools.tools.length, 28);
   const scenes = JSON.parse(toolText(await toolCall("list_scenes")));
   assert.ok(scenes.some((entry) => entry.id === created.sceneId));
   const resources = await rpc("resources/list");
   assert.equal(resources.resources.length, 7);
   const docs = toolText(await toolCall("sketchdex_docs", { topic: "install" }));
   assert.match(docs, /^# Install/);
-  log("MCP HTTP initialize, 26 tools, list_scenes, 7 resources, docs");
+  log("MCP HTTP initialize, 28 tools, list_scenes, 7 resources, docs");
 
   await runStdio(vault);
-  log("MCP stdio initialize, 26 tools, list_scenes, clean EOF");
+  log("MCP stdio initialize, 28 tools, list_scenes, clean EOF");
 
   const renderCreated = await agent("create", {
     name: "Render scene",

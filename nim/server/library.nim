@@ -1,5 +1,5 @@
 import std/[algorithm, hashes, json, options, os, osproc, sets, strutils, tables,
-  times]
+  times, unicode]
 
 import ../core/[jsvalue, random_ids]
 import ./vault
@@ -190,6 +190,101 @@ proc everyToken(haystack: string; tokens: seq[string]): bool =
   for token in tokens:
     if not haystack.contains(token): return false
   true
+
+proc shortText(value: string; limit: int): string =
+  var count = 0
+  for ch in strutils.splitWhitespace(value).join(" ").runes:
+    if count >= limit: break
+    result.add(toUTF8(ch))
+    inc count
+
+proc itemSummary*(item: JsonNode): JsonNode =
+  let elements = item.field("elements")
+  var types = newJObject()
+  var snippets = newJArray()
+  var minX = Inf
+  var minY = Inf
+  var maxX = -Inf
+  var maxY = -Inf
+  if elements.isArr:
+    for element in elements:
+      let kind = element.field("type").stringOr("")
+      if kind.len > 0:
+        types[kind] = %(if types.hasKey(kind): types[kind].getInt + 1 else: 1)
+      for key in ["text", "originalText"]:
+        let value = element.field(key)
+        if jsTruthy(value) and snippets.len < 3:
+          snippets.add(%shortText(jsString(value), 60))
+      let x = floatOr(element.field("x"), 0.0)
+      let y = floatOr(element.field("y"), 0.0)
+      minX = min(minX, x)
+      minY = min(minY, y)
+      maxX = max(maxX, x + floatOr(element.field("width"), 0.0))
+      maxY = max(maxY, y + floatOr(element.field("height"), 0.0))
+  result = %*{
+    "id": item.field("id").stringOr(""),
+    "elements": if elements.isArr: elements.len else: 0,
+    "types": types,
+    "bounds": %*{
+      "x": numberNode(if minX == Inf: 0.0 else: minX),
+      "y": numberNode(if minY == Inf: 0.0 else: minY),
+      "width": numberNode(if maxX == -Inf: 0.0 else: maxX - minX),
+      "height": numberNode(if maxY == -Inf: 0.0 else: maxY - minY)
+    },
+    "text": snippets
+  }
+  let name = item.field("name")
+  if not name.isNil and name.kind == JString: result["name"] = name
+
+proc findItem*(store: LibraryStore; key: string): Option[JsonNode] =
+  let wanted = key.strip
+  if wanted.len == 0: return none(JsonNode)
+  let items = store.readItems()
+  for item in items:
+    if item.field("id").stringOr("") == wanted: return some(item)
+  for item in items:
+    if item.field("name").stringOr("") == wanted: return some(item)
+  let lower = wanted.toLowerAscii
+  for item in items:
+    if item.field("name").stringOr("").toLowerAscii == lower: return some(item)
+  var matches: seq[JsonNode]
+  for item in items:
+    if item.field("name").stringOr("").toLowerAscii.contains(lower):
+      matches.add(item)
+  if matches.len == 1: return some(matches[0])
+  if matches.len > 1:
+    var candidates: seq[string]
+    for item in matches:
+      candidates.add(item.field("id").stringOr("") & " " &
+        item.field("name").stringOr(""))
+    fail("library item \"" & wanted & "\" matches " & $matches.len &
+      " items: " & candidates.join(", "), 400)
+  none(JsonNode)
+
+proc matchingItems*(store: LibraryStore; query, kind: string; limit: int): JsonNode =
+  let items = store.readItems()
+  let cap = max(0, min(limit, 100))
+  var rows = newJArray()
+  if cap == 0: return %*{"total": items.len, "items": rows}
+  let tokens = strutils.splitWhitespace(query.strip.toLowerAscii)
+  let wantedKind = kind.strip
+  for item in items:
+    let elements = item.field("elements")
+    var haystack = item.field("id").stringOr("").toLowerAscii & "\n" &
+      item.field("name").stringOr("").toLowerAscii
+    var kindHit = wantedKind.len == 0
+    if elements.isArr:
+      for element in elements:
+        let elementType = element.field("type").stringOr("")
+        haystack.add("\n" & elementType.toLowerAscii)
+        for key in ["text", "originalText"]:
+          let value = element.field(key)
+          if jsTruthy(value): haystack.add("\n" & jsString(value).toLowerAscii)
+        if wantedKind.len > 0 and elementType == wantedKind: kindHit = true
+    if not kindHit or not everyToken(haystack, tokens): continue
+    rows.add(itemSummary(item))
+    if rows.len >= cap: break
+  %*{"total": items.len, "items": rows}
 
 proc biggestIntOr(node: JsonNode; fallback: int64): int64 =
   if not node.isFiniteNumber: return fallback

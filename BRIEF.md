@@ -79,7 +79,9 @@ an exact name, or a unique part of a name.
 | `comment-update` | `{scene, elementId, commentId, action, label}` | `action` is `resolve`, `reopen` or `delete` |
 | `library-browse` | `{query?, limit?}` | search the official Excalidraw library catalog |
 | `library-install` | `{library}` | install a catalog id or a `.excalidrawlib` URL into the vault |
-| `library-list` | `{}` | what is installed, with element counts |
+| `library-list` | `{query?, type?, limit?}` | what is installed, with types, bounds and text snippets |
+| `library-item` | `{item, full?}` | inspect one installed item, with raw elements when `full` |
+| `library-insert` | `{scene, item, x?, y?, label}` | place an installed item into a scene |
 
 **Comments** are stored on the element they are about, under
 `customData.sketchdex.comments`, so they travel with save, copy, duplicate, undo
@@ -97,10 +99,19 @@ erase a comment.
 `library-browse` searches the official catalog by name, description or author
 and returns ids. `library-install` takes one of those ids, or a direct
 `.excalidrawlib` URL, and appends its items; installing the same library twice
-adds nothing. `library-list` shows what is there. Use this when the person asks
-for an icon set or a symbol you would otherwise have to draw, and check the
-catalog before drawing a logo by hand. These are not scene writes, so they take
-no `label` and create no snapshot.
+adds nothing. `library-list` finds an installed item by name, element text, type
+or id, and `library-item` inspects one item, with `full: true` for its raw
+elements. Use these when the person asks for an icon set or a symbol you would
+otherwise have to draw, and check the catalog before drawing a logo by hand.
+Browsing, installing, listing and reading are not scene writes, so they take no
+`label` and create no snapshot.
+
+`library-insert` places an item into a scene by id, exact name or unique name
+fragment. It is a scene write, so it needs `label` and takes a snapshot. It
+clones the item's elements with fresh ids, seeds, versions, indices and group
+ids, remaps internal bindings, and moves the item's top-left to `x`/`y` (default
+0). References outside the item are dropped or nulled. The placed elements are
+ordinary editable elements; the library file is never rewritten.
 
 Rendering (`render_scene`) is MCP-only - it returns an image, which REST can't
 usefully hand back. Over shell, open the scene in the app instead.
@@ -160,8 +171,10 @@ meantime survives. `{"ids": [...], "patch": {...}}` applies one change to many.
 
 Elements are **real Excalidraw elements**. Any field you set is kept verbatim -
 paste a full element out of a `.excalidraw` file and it round-trips unchanged.
-Fields you omit are filled in. `id`, `index`, `seed`, `version`, `versionNonce`
-and `updated` are always generated for you.
+Fields you omit are filled in with a valid default. `add_elements` currently
+keeps identity fields you supply, so copied ids, seeds, versions and indices
+can collide with a scene. `insert_library_item` does not reuse them: it clones
+and reissues all of those fields before appending.
 
 Types: `rectangle` `ellipse` `diamond` `arrow` `line` `text` `freedraw` `frame`.
 Others (`image`, `embeddable`, …) pass through with universal defaults only.

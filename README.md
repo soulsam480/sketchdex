@@ -123,7 +123,7 @@ from the environment so a client config can opt in once.
 
 ## What the agent gets
 
-Twenty-six tools over stdio. The ones that matter:
+Twenty-eight tools over stdio. The ones that matter:
 
 | Tool | Does |
 |---|---|

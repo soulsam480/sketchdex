@@ -28,9 +28,11 @@ type
     opBrowseLibraries
     opInstallLibrary
     opListLibrary
+    opReadLibraryItem
+    opInsertLibraryItem
 
 const
-  INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, search_elements when you need one shape by name or note, browse_libraries when the person asks for an icon set or a symbol you would otherwise draw by hand, render_scene after, and fix what looks wrong. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
+  INSTRUCTIONS* = "Sketchdex draws on the user's Excalidraw canvases; scenes are real .excalidraw files, every write is snapshotted, and `label` is required on every write. Everything must look HAND-DRAWN - it is Excalidraw: roughness 1, sparse confident strokes, flat solid colour (no shading, no cross-hatch texture), hand-drawn font, colours exactly as written (never inverted), dark paper by default. To draw anything that has to look like something - a character, object, illustration - write it as ONE SVG and call import_svg; never assemble a figure from shapes. Use add_elements for diagrams, text, boxes, arrows and detail strokes. describe_scene before you draw, search_elements when you need one shape by name or note, browse_libraries when the person asks for an icon set or a symbol you would otherwise draw by hand, render_scene after, and fix what looks wrong. After you install a library, find an item with list_library, inspect it with read_library_item if needed, place it with insert_library_item, then render_scene and look. For anything about setup - installing on a client, where scenes are stored, the app, what rendering needs, or an error - call sketchdex_docs before guessing."
   LabelRequiredNote = ". `label` is what the user reads in the history sidebar when deciding whether to keep this change, so describe what you are doing, e.g. 'add the dog illustration'."
 
 let
@@ -78,10 +80,77 @@ let
   },
   {
     "name": "list_library",
-    "description": "What is installed in the vault's library: item ids, names and element counts.",
+    "description": "What is installed in the vault's library: item ids, names, element counts, types, bounds and text snippets. Pass query to search names, element text, element types and ids, or type to keep only items that contain that element type. Start here after install to find an item to place.",
     "inputSchema": {
       "type": "object",
-      "properties": {}
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Words to match in item names, element text, element types or item ids. Every word must appear."
+        },
+        "type": {
+          "type": "string",
+          "description": "Only items containing an element of this type, e.g. arrow or text."
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max items to show (default 20, capped at 100)."
+        }
+      }
+    }
+  },
+  {
+    "name": "read_library_item",
+    "description": "Inspect one installed library item by id, exact name or unique name fragment. Gives the item's summary by default, with full: true its raw elements too. Use list_library to find the item first, then insert_library_item to place it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "type": "string",
+          "description": "Item id, exact name, or a unique part of its name. From list_library."
+        },
+        "full": {
+          "type": "boolean",
+          "description": "Return the raw elements as well as the summary. Off by default."
+        }
+      },
+      "required": [
+        "item"
+      ]
+    }
+  },
+  {
+    "name": "insert_library_item",
+    "description": "Place an installed library item into a scene as ordinary editable elements with fresh ids and bindings. This is a scene write and needs label. Find the item with list_library, inspect with read_library_item if needed, then render_scene and look at the result.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "Scene id, exact name, or a unique part of the name. Use list_scenes if unsure."
+        },
+        "item": {
+          "type": "string",
+          "description": "Item id, exact name, or a unique part of its name. From list_library."
+        },
+        "x": {
+          "type": "number",
+          "description": "Scene x for the item's top-left corner. Default 0."
+        },
+        "y": {
+          "type": "number",
+          "description": "Scene y for the item's top-left corner. Default 0."
+        },
+        "label": {
+          "type": "string",
+          "description": "Short description of this change for the history sidebar."
+        }
+      },
+      "required": [
+        "scene",
+        "item",
+        "label"
+      ]
     }
   },
   {
@@ -830,6 +899,8 @@ const
     "browse_libraries": opBrowseLibraries,
     "install_library": opInstallLibrary,
     "list_library": opListLibrary,
+    "read_library_item": opReadLibraryItem,
+    "insert_library_item": opInsertLibraryItem,
   }.toTable()
 
 let requiredKeys* = block:

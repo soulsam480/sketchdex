@@ -99,10 +99,10 @@ const client = new Client({ name: "sketchdex-e2e", version: "0" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();
-assert(tools.length === 26, `expected 26 tools, got ${tools.length}`);
+assert(tools.length === 28, `expected 28 tools, got ${tools.length}`);
 assert(/hand-drawn/i.test(client.getInstructions() ?? ""), "server instructions missing");
 assert(/sketchdex_docs/.test(client.getInstructions() ?? ""), "server instructions do not point at the docs");
-log("mcp connected, 26 tools");
+log("mcp connected, 28 tools");
 
 const text = (r) => r.content.find((c) => c.type === "text")?.text ?? "";
 const call = async (name, args) => {
@@ -117,7 +117,7 @@ assert(docsTool.startsWith("# Troubleshooting") && /SKETCHDEX_BROWSER/.test(docs
 const docsIndex = text(await call("sketchdex_docs", {}));
 assert(/- install:/.test(docsIndex) && /- drawing:/.test(docsIndex), "sketchdex_docs without a topic did not return the index");
 const docsTools = text(await call("sketchdex_docs", { topic: "tools" }));
-assert(/^26 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
+assert(/^28 tools/m.test(docsTools) && docsTools.includes("`render_scene`"), "the generated tools topic is wrong");
 const { resources } = await client.listResources();
 assert(resources.length === 7 && resources.every((r) => r.uri.startsWith("sketchdex://docs/")), `expected 7 docs resources, got ${resources.length}`);
 const resource = await client.readResource({ uri: "sketchdex://docs/install" });
@@ -161,41 +161,6 @@ assert(found.results[0].id === boxId, "search returned the label instead of the 
 const byNote = JSON.parse(text(await call("search_elements", { scene: "E2E", query: "wrong colour" })));
 assert(byNote.results[0]?.id === boxId && byNote.results[0]?.match === "comment", "search did not find the comment");
 log("search finds a label's shape and a comment's element");
-
-// a library install is a vault write, not browser state, and installing twice adds nothing
-const libraryElement = {
-  type: "rectangle", version: 1, versionNonce: 1, isDeleted: false,
-  id: "e2e-library-rect", fillStyle: "solid", strokeWidth: 2, strokeStyle: "solid",
-  roughness: 1, opacity: 100, angle: 0, x: 0, y: 0, strokeColor: "#e8e6e3",
-  backgroundColor: "#2b6b3a", width: 120, height: 60, seed: 1, groupIds: [],
-  frameId: null, roundness: { type: 3 }, boundElements: [], updated: 1764000000000,
-  link: null, locked: false,
-};
-const fixture = await new Promise((resolve) => {
-  const fixtureServer = http.createServer((_req, res) => {
-    res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify({
-      type: "excalidrawlib", version: 1, source: "e2e", library: [[libraryElement]],
-    }));
-  });
-  fixtureServer.listen(0, "127.0.0.1", () =>
-    resolve({ fixtureServer, url: `http://127.0.0.1:${fixtureServer.address().port}/icons.excalidrawlib` }),
-  );
-});
-const firstInstall = JSON.parse(text(await call("install_library", { library: fixture.url })));
-assert(firstInstall.added === 1 && firstInstall.total === 1, `install_library added ${firstInstall.added} of ${firstInstall.total}`);
-const again = JSON.parse(text(await call("install_library", { library: fixture.url })));
-assert(again.added === 0 && again.skipped === 1, "a second install duplicated the items");
-const held = JSON.parse(text(await call("list_library", {})));
-assert(held.total === 1 && held.items[0].elements === 1, "list_library did not report the installed item");
-const stored = JSON.parse(fs.readFileSync(path.join(vault, "library.excalidrawlib"), "utf8"));
-assert(
-  stored.libraryItems[0].elements[0].id === libraryElement.id,
-  "the installed item did not keep the source element",
-);
-assert(fs.existsSync(path.join(vault, "library.excalidrawlib")), "the library was not written into the vault");
-fixture.fixtureServer.close();
-log("library install lands in the vault and is idempotent");
 
 log("comments attach, list, resolve and reopen");
 
@@ -245,6 +210,77 @@ await call("import_svg", {
 const afterSvg = JSON.parse(text(await call("describe_scene", { scene: "E2E", type: "ellipse" })));
 assert(afterSvg.counts.ellipse === 2, `import_svg did not produce a native ellipse: ${JSON.stringify(afterSvg.counts)}`);
 log("check, import_svg ok");
+
+// an installed item is a vault write. Finding and placing it never rewrites the library.
+const libraryElement = {
+  type: "rectangle", version: 2, versionNonce: 1, isDeleted: false,
+  id: "e2e-library-rect", fillStyle: "solid", strokeWidth: 2, strokeStyle: "solid",
+  roughness: 1, opacity: 100, angle: 0, x: 10, y: 20, strokeColor: "#e8e6e3",
+  backgroundColor: "#2b6b3a", width: 120, height: 60, seed: 1, groupIds: [],
+  frameId: null, roundness: { type: 3 },
+  boundElements: [{ id: "e2e-library-label", type: "text" }],
+  updated: 1764000000000, link: null, locked: false,
+};
+const libraryLabel = {
+  type: "text", version: 1, versionNonce: 2, isDeleted: false,
+  id: "e2e-library-label", x: 15, y: 25, width: 110, height: 20,
+  text: "Library label", originalText: "Library label", fontSize: 20,
+  fontFamily: 5, textAlign: "left", verticalAlign: "top",
+  containerId: "e2e-library-rect", fillStyle: "solid", strokeWidth: 2,
+  strokeStyle: "solid", roughness: 1, opacity: 100, angle: 0,
+  strokeColor: "#e8e6e3", backgroundColor: "transparent",
+  seed: 2, groupIds: [], frameId: null, boundElements: [],
+  updated: 1764000000000, link: null, locked: false, roundness: null,
+};
+const fixture = await new Promise((resolve) => {
+  const fixtureServer = http.createServer((_req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({
+      type: "excalidrawlib", version: 1, source: "e2e",
+      library: [[libraryElement, libraryLabel]],
+    }));
+  });
+  fixtureServer.listen(0, "127.0.0.1", () =>
+    resolve({ fixtureServer, url: `http://127.0.0.1:${fixtureServer.address().port}/pack.excalidrawlib` }),
+  );
+});
+const firstInstall = JSON.parse(text(await call("install_library", { library: fixture.url })));
+assert(firstInstall.added === 1 && firstInstall.total === 1, `install_library added ${firstInstall.added} of ${firstInstall.total}`);
+const again = JSON.parse(text(await call("install_library", { library: fixture.url })));
+assert(again.added === 0 && again.skipped === 1, "a second install duplicated the items");
+fixture.fixtureServer.close();
+const libPath = path.join(vault, "library.excalidrawlib");
+const stored = JSON.parse(fs.readFileSync(libPath, "utf8"));
+assert(stored.libraryItems[0].elements[0].id === libraryElement.id, "the installed item lost its source element");
+const held = JSON.parse(text(await call("list_library", {
+  query: "Library label", type: "rectangle",
+})));
+assert(held.total === 1 && held.items.length === 1, "list_library did not report the installed item");
+assert(held.items[0].text[0] === "Library label" && held.items[0].types.rectangle === 1, "list_library did not describe the item's content");
+const itemId = held.items[0].id;
+const compact = JSON.parse(text(await call("read_library_item", { item: itemId })));
+assert(compact.elements === 2 && compact.bounds.width === 120, "read_library_item summary is wrong");
+const complete = JSON.parse(text(await call("read_library_item", { item: itemId, full: true })));
+assert(complete.elements.length === 2, "read_library_item did not return the raw elements");
+const libBytes = fs.readFileSync(libPath);
+const inserted = JSON.parse(text(await call("insert_library_item", {
+  scene: "E2E", item: itemId, x: 600, y: 200, label: "place the library item",
+})));
+assert(inserted.added === 2 && inserted.ids.length === 2, "insert_library_item did not add two elements");
+assert(inserted.ids.every((id) => id !== libraryElement.id && id !== libraryLabel.id), "insert_library_item reused source ids");
+assert(inserted.bounds.x === 600 && inserted.bounds.y === 200, `insert landed at ${JSON.stringify(inserted.bounds)}`);
+assert(fs.readFileSync(libPath).equals(libBytes), "placing an item rewrote the library file");
+const placed = JSON.parse(text(await call("read_elements", { scene: "E2E", ids: inserted.ids })));
+const clonedLabel = placed.elements.find((element) => element.text === "Library label");
+assert(clonedLabel && clonedLabel.containerId === inserted.idMap[libraryElement.id], "the placed label lost its container");
+const labelledHistory = JSON.parse(text(await call("list_history", { scene: "E2E" })));
+assert(labelledHistory.entries.some((entry) => entry.label === "place the library item"), "the insert was not snapshotted with its label");
+const insertedAgain = JSON.parse(text(await call("insert_library_item", {
+  scene: "E2E", item: itemId, x: 800, y: 300, label: "place the library item again",
+})));
+assert(insertedAgain.added === 2, "the second insert did not add two elements");
+assert(!insertedAgain.ids.some((id) => inserted.ids.includes(id)), "the second insert reused ids from the first");
+log("library item found, read, inserted twice with labels, library bytes unchanged");
 
 // a call without a label is refused by the server, not just the schema
 const unlabelled = await client.callTool({ name: "add_elements", arguments: { scene: "E2E", elements: [{ type: "rectangle", x: 0, y: 0, width: 10, height: 10 }] } });
