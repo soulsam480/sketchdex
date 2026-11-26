@@ -43,3 +43,6 @@ nim/tests/test_*
 
 # the landing page lives outside this repo
 site/
+
+# local differential scratch
+.opencode/differential-scratch/
