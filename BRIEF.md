@@ -187,9 +187,14 @@ points                [[0,0],[dx,dy],...] for line/arrow/freedraw, relative
 
 Nothing is ever inverted for display. The canvas shows every hex as it is,
 including the background, so `#ffc21a` is gold and `#ffffff` is white on any
-scene. There is no dark "mode": a dark scene is one whose data is dark.
+scene. There is no dark "mode" for canvas data. A dark scene is one whose data
+is dark. The app chrome has a light and a dark theme, but that is a viewing
+preference and never changes a scene.
 
-- **New scenes are dark paper**: `viewBackgroundColor` `#121212`.
+- **New scenes in the app follow the chrome.** White `#ffffff` in light,
+  `#121212` in dark. Scenes made through the agent or MCP keep the dark default.
+- **Older scenes never change.** `viewBackgroundColor` is per-scene data and the
+  chrome theme does not rewrite it.
 - **Default ink follows the paper.** Anything you draw without a `strokeColor`
   gets `#e9ecef` on dark paper and `#1e1e1e` on light paper. `describe_scene`
   reports both as `background` and `ink`. Check them before choosing colours -

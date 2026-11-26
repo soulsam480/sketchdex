@@ -809,7 +809,7 @@ proc routeScenes(req: IncomingRequest, server: HttpServer) {.async.} =
       else:
         let name = textField(body, "name")
         await sendJson(req.client, 200, store.create(
-          if name.len > 0: name else: "Untitled"))
+          if name.len > 0: name else: "Untitled", textField(body, "paper")))
       return
     methodNotAllowed("GET", "POST")
 

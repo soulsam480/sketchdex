@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import SceneCard from "./SceneCard";
+import ThemeToggle from "./ThemeToggle";
 import { Wordmark } from "./Wordmark";
 import {
   deleteScene,
@@ -84,7 +85,7 @@ export default function Library({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search scenes"
-            className="hairline w-44 rounded-md bg-ink-900 px-3 py-1.5 text-sm text-chalk outline-none placeholder:text-graphite/70 focus:border-white/20 md:w-64"
+            className="hairline w-44 rounded-md bg-ink-900 px-3 py-1.5 text-sm text-chalk outline-none placeholder:text-graphite/70 focus:border-ink-700 md:w-64"
           />
           <div className="hairline hidden rounded-md bg-ink-900 p-0.5 sm:flex">
             {SORTS.map((option) => (
@@ -125,6 +126,7 @@ export default function Library({
             hidden
             onChange={(event) => onImport(event.target.files)}
           />
+          <ThemeToggle />
           <button
             onClick={onNew}
             className="rounded-md bg-chalk px-3 py-1.5 text-sm font-medium text-ink-950 transition-opacity hover:opacity-85"
@@ -145,7 +147,7 @@ export default function Library({
             {scenes.length === 0 && (
               <button
                 onClick={onNew}
-                className="hairline rounded-md bg-ink-900 px-3 py-1.5 text-sm text-chalk hover:border-white/20"
+                className="hairline rounded-md bg-ink-900 px-3 py-1.5 text-sm text-chalk hover:border-ink-700"
               >
                 Draw the first one
               </button>

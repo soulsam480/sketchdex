@@ -118,10 +118,10 @@ export const slimAppState = (appState: Record<string, any>) => {
 
 export const loadIndex = () => api<SceneMeta[]>("/scenes");
 
-export const createScene = (name = "Untitled") =>
+export const createScene = (name = "Untitled", paper?: string) =>
   api<SceneMeta>("/scenes", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, paper }),
   });
 
 export const loadScene = (id: string) =>

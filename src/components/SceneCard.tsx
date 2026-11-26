@@ -63,7 +63,7 @@ export default function SceneCard({
   }, [confirming]);
 
   return (
-    <div className="group hairline relative overflow-hidden rounded-lg bg-ink-900 transition-colors hover:border-white/20">
+    <div className="group hairline relative overflow-hidden rounded-lg bg-ink-900 transition-colors hover:border-ink-700">
       <button
         onClick={onOpen}
         className="relative block aspect-[4/3] w-full overflow-hidden bg-ink-850"
@@ -91,7 +91,7 @@ export default function SceneCard({
         title={meta.starred ? "Unpin" : "Pin"}
         className={`absolute top-2 right-2 rounded p-1 text-xs leading-none transition-opacity focus-visible:opacity-100 ${
           meta.starred
-            ? "text-violet opacity-100"
+            ? "text-violet-ink opacity-100"
             : "text-graphite opacity-0 group-hover:opacity-100 hover:text-chalk"
         }`}
       >
@@ -138,7 +138,7 @@ export default function SceneCard({
           {confirming ? (
             <button
               onClick={onDelete}
-              className="rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] text-red-300 hover:bg-red-500/25"
+              className="rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] text-[var(--sd-error)] hover:bg-red-500/25"
             >
               sure?
             </button>

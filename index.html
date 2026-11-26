@@ -2,11 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (() => {
+        let saved = null;
+        try {
+          saved = localStorage.getItem("sketchdex:theme");
+        } catch {}
+        const theme = saved === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        const meta = document.createElement("meta");
+        meta.setAttribute("name", "theme-color");
+        meta.setAttribute("content", theme === "light" ? "#f6f6f4" : "#0b0b0c");
+        document.head.appendChild(meta);
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <meta name="theme-color" content="#0b0b0c" />
     <script>window.EXCALIDRAW_ASSET_PATH = "/";</script>
     <title>sketchdex</title>
   </head>

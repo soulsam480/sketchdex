@@ -188,8 +188,11 @@ edits.
 
 ## Notes
 
-- New scenes are dark paper (`#121212`) and nothing is ever colour-inverted:
-  the canvas, thumbnails and renders show every hex exactly as written. Paper
+- The chrome has a light and a dark theme. It is a preference, not scene data.
+  Canvas colours are authored and are never inverted or filtered, so the canvas,
+  thumbnails and renders show every hex exactly as written. New scenes made in
+  the app take white paper in light and `#121212` in dark, while older scenes
+  keep their paper. Agent and MCP created scenes keep the dark default. Paper
   colour is per scene (`viewBackgroundColor`).
 - The first render on a fresh install takes a few seconds while the browser
   starts; after that about a second and a half.

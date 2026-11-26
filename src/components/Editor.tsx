@@ -9,7 +9,9 @@ import {
   serializeAsJSON,
 } from "@excalidraw/excalidraw";
 import { FontSize } from "./FontSize";
+import ThemeToggle from "./ThemeToggle";
 import { Wordmark } from "./Wordmark";
+import { useTheme } from "../lib/theme";
 import History from "./History";
 import Comments from "./Comments";
 import CommentPopover from "./CommentPopover";
@@ -73,8 +75,8 @@ const dedupeLibrary = (items: readonly LibraryItem[]) => {
 };
 
 /**
- * The Excalidraw chrome is always dark to match the app. The canvas, though,
- * is never filtered: Excalidraw's dark theme normally draws the canvas through
+ * The Excalidraw chrome follows the app theme, including the editor. The canvas
+ * is never filtered: Excalidraw's dark theme normally draws it through
  * invert(93%) hue-rotate(180deg), which shows a real hex as something else
  * (bright gold as brown, white as black). That is turned off in index.css, so
  * what is on screen is exactly what is in the file - a dark drawing is one
@@ -98,6 +100,7 @@ export default function Editor({
   onIndexChange,
   onOpenSwitcher,
 }: Props) {
+  const { theme } = useTheme();
   const [initial, setInitial] = useState<ScenePayload | null>(null);
   /**
    * "loading" and "failed" are kept apart from "an empty scene": a load that
@@ -1018,6 +1021,7 @@ export default function Editor({
             )}
           </button>
 
+          <ThemeToggle />
           <button
             onClick={onOpenSwitcher}
             title="Jump to a scene (⌘K, or ⌥K)"
@@ -1039,7 +1043,7 @@ export default function Editor({
         onKeyDownCapture={markInteracted}
       >
         {commentMode && (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-ink-800/95 px-3 py-1 text-[11px] text-graphite">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-ink-700 bg-ink-800/95 px-3 py-1 text-[11px] text-graphite">
             Click a shape to comment · Esc to leave
           </div>
         )}
@@ -1072,7 +1076,7 @@ export default function Editor({
         )}
         {loadState === "ready" && initial && (
           <Excalidraw
-            theme="dark"
+            theme={theme}
             initialData={{
               elements: initial.elements as any,
               appState: initial.appState,

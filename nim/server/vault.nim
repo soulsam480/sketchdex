@@ -248,8 +248,9 @@ proc patchIndex*(vault: Vault; id: string; patch: IndexPatch): JsonNode
 proc list*(vault: Vault): JsonNode =
   readIndex(vault)
 
-proc create*(vault: Vault; name: string = "Untitled"): JsonNode =
+proc create*(vault: Vault; name: string = "Untitled"; paper = DEFAULT_PAPER): JsonNode =
   let now = nowMs()
+  let background = if paper.len > 0: paper else: DEFAULT_PAPER
   result = %*{
     "id": randomUuid(),
     "name": name,
@@ -260,7 +261,7 @@ proc create*(vault: Vault; name: string = "Untitled"): JsonNode =
   let id = result["id"].getStr
   writeScene(vault, id, %*{
     "elements": newJArray(),
-    "appState": freshAppState(),
+    "appState": freshAppState(background),
     "files": newJObject()
   }, %name)
   let existing = readIndex(vault)

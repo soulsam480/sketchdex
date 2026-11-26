@@ -37,7 +37,7 @@ function CodexMark() {
         width="9"
         height="10"
         rx="1.5"
-        fill="#0b0b0c"
+        fill="var(--color-ink-950)"
         stroke="currentColor"
         strokeOpacity="0.6"
       />

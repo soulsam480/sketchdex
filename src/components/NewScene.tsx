@@ -71,7 +71,7 @@ export default function NewScene({
         />
 
         {error && (
-          <p className="hairline-b px-4 py-2 text-xs text-red-300">{error}</p>
+          <p className="hairline-b px-4 py-2 text-xs text-[var(--sd-error)]">{error}</p>
         )}
 
         <div className="hairline-t flex items-center justify-between gap-4 px-4 py-2">

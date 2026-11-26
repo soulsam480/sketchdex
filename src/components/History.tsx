@@ -117,7 +117,7 @@ export default function History({
 
       {previewing !== null && (
         <div className="hairline-t flex items-center gap-2 px-3.5 py-2.5">
-          <span className="label-mono normal-case text-violet">Previewing</span>
+          <span className="label-mono normal-case text-violet-ink">Previewing</span>
           <button
             onClick={() => onPreview(null)}
             className="ml-auto rounded-md bg-ink-800 px-2 py-1 text-xs text-chalk transition-opacity hover:opacity-80"
@@ -156,7 +156,7 @@ function Row({
       <button onClick={onClick} className="min-w-0 flex-1 text-left">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-xs text-chalk">{title}</span>
-          {badge && <span className="label-mono text-violet">{badge}</span>}
+          {badge && <span className="label-mono text-violet-ink">{badge}</span>}
         </span>
         {subtitle && (
           <span className="mt-0.5 block truncate text-[11px] text-graphite">

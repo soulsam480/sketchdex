@@ -11,6 +11,7 @@ import {
   onVaultEvent,
 } from "./lib/store";
 import { migrateLegacyScenes } from "./lib/migrate";
+import { useTheme } from "./lib/theme";
 import type { SceneMeta } from "./lib/types";
 
 const routeFromLocation = () => {
@@ -19,6 +20,7 @@ const routeFromLocation = () => {
 };
 
 export default function App() {
+  const { theme } = useTheme();
   const scenesRef = useRef<SceneMeta[]>([]);
   const [scenes, setScenes] = useState<SceneMeta[]>([]);
   const [ready, setReady] = useState(false);
@@ -118,7 +120,7 @@ export default function App() {
     async (name: string) => {
       let meta: SceneMeta;
       try {
-        meta = await createScene(name);
+        meta = await createScene(name, theme === "light" ? "#ffffff" : "#121212");
       } catch (err) {
         // rethrown with a reason the modal can show; without this the
         // failure was an unhandled rejection and a button stuck on Creating
@@ -133,7 +135,7 @@ export default function App() {
       setNewOpen(false);
       open(meta.id);
     },
-    [open, refresh],
+    [open, refresh, theme],
   );
 
   const promptNewScene = useCallback((name = "") => {
@@ -248,7 +250,7 @@ export default function App() {
       {vaultDown && (
         <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
           <div className="hairline flex items-center gap-2 rounded-lg bg-ink-900 px-3.5 py-2 text-xs text-chalk shadow-xl">
-            <span className="size-1.5 rounded-full bg-red-400" />
+            <span className="size-1.5 rounded-full bg-[var(--sd-error)]" />
             Vault unreachable. Edits are held and retried, not saved. Check that
             the sketchdex server is running.
           </div>
@@ -256,7 +258,7 @@ export default function App() {
       )}
 
       {notice && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-ink-800/95 px-3 py-1 text-[11px] text-graphite">
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-ink-700 bg-ink-800/95 px-3 py-1 text-[11px] text-graphite">
           {notice}
         </div>
       )}

@@ -88,7 +88,7 @@ export default function Switcher({
                   i === cursor ? "bg-ink-800" : ""
                 }`}
               >
-                <span className="w-3 shrink-0 text-center text-xs text-violet">
+                <span className="w-3 shrink-0 text-center text-xs text-violet-ink">
                   {scene.id === activeId ? "•" : ""}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-chalk">

@@ -251,7 +251,7 @@ export default function Comments({
               placeholder="Add a comment"
               className="w-full resize-none rounded-md bg-ink-800 px-2 py-1.5 text-xs leading-relaxed text-chalk outline-none placeholder:text-graphite/70"
             />
-            {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+            {error && <p className="mt-1 text-[11px] text-[var(--sd-error)]">{error}</p>}
             <div className="mt-1.5 flex items-center gap-2">
               <span className="label-mono normal-case">⌘↵ sends</span>
               <button

@@ -90,7 +90,7 @@ export default function CommentPopover({
     <div
       ref={card}
       data-comment-popover
-      className="fixed z-50 flex w-[300px] flex-col overflow-hidden rounded-lg border border-white/10 bg-ink-900 shadow-2xl"
+      className="fixed z-50 flex w-[300px] flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
       style={{ left: at.left, top: at.top }}
       onPointerDown={(event) => event.stopPropagation()}
     >
@@ -161,7 +161,7 @@ export default function CommentPopover({
           placeholder="Add a comment"
           className="w-full resize-none rounded-md bg-ink-800 px-2 py-1.5 text-xs leading-relaxed text-chalk outline-none placeholder:text-graphite/70"
         />
-        {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+        {error && <p className="mt-1 text-[11px] text-[var(--sd-error)]">{error}</p>}
         <div className="mt-1.5 flex items-center gap-2">
           <button
             type="button"

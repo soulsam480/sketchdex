@@ -26,6 +26,16 @@ open, or give them that link if it is.
 The page notices agent writes as they happen, so it can stay open while
 the agent draws and the canvas updates on its own.
 
+## Appearance
+
+The chrome has a light and a dark theme. The toggle sits at the end of the
+library header and the editor header. The choice is a browser preference stored
+in `localStorage["sketchdex:theme"]`, and other tabs follow it. It never touches
+scene data. Canvas colours are authored and are never inverted or filtered. New
+scenes made in the app take white paper in light and `#121212` in dark. Scenes
+already in the vault keep their paper, and scenes made by an agent or MCP caller
+keep the dark default.
+
 ## The interface
 
 **Library** (the front page): a grid of scene cards with hand-drawn
