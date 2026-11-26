@@ -36,8 +36,14 @@ import {
   type LibraryItem,
   type Snapshot,
 } from "../lib/store";
+import { capitalise } from "../lib/format";
 import { renderThumbnail } from "../lib/thumbnail";
 import { useToolShortcuts } from "../lib/toolbar";
+import {
+  buildThreads,
+  threadCounts,
+  type ThreadFilter,
+} from "../lib/commentThreads";
 import type { SceneMeta, ScenePayload } from "../lib/types";
 
 const SAVE_DEBOUNCE = 700;
@@ -107,6 +113,7 @@ export default function Editor({
   const [api, setApi] = useState<any>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentsView, setCommentsView] = useState<"list" | "detail">("list");
   const [commentMode, setCommentMode] = useState(false);
   const [popover, setPopover] = useState<{
     element: { id: string; type: string; text?: string };
@@ -119,6 +126,12 @@ export default function Editor({
   } | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentTotals, setCommentTotals] = useState({ open: 0, resolved: 0 });
+  const [commentsStatus, setCommentsStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
+  const [commentsTruncated, setCommentsTruncated] = useState(false);
+  const [filter, setFilter] = useState<ThreadFilter>("all");
+  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const selectionKey = useRef("");
   const pressAt = useRef<{ x: number; y: number } | null>(null);
@@ -403,10 +416,16 @@ export default function Editor({
   }, [refreshHistory]);
 
   const refreshComments = useCallback(async () => {
-    const list = await loadComments(meta.id).catch(() => null);
-    if (!list) return;
-    setComments(list.comments);
-    setCommentTotals({ open: list.open, resolved: list.resolved });
+    setCommentsStatus((prev) => (prev === "ready" ? "ready" : "loading"));
+    try {
+      const list = await loadComments(meta.id);
+      setComments(list.comments);
+      setCommentTotals({ open: list.open, resolved: list.resolved });
+      setCommentsTruncated(list.truncated);
+      setCommentsStatus("ready");
+    } catch {
+      setCommentsStatus("error");
+    }
   }, [meta.id]);
 
   useEffect(() => {
@@ -589,7 +608,7 @@ export default function Editor({
 
   /** An element's name as the person reads it: its text, or its label's text. */
   const elementName = useCallback(
-    (elements: any[], element: any) => {
+    (elements: readonly any[], element: any) => {
       const label =
         element.text ??
         elements.find((el) => el.containerId === element.id && !el.isDeleted)?.text;
@@ -606,7 +625,7 @@ export default function Editor({
       return {
         id: element.id as string,
         type: element.type as string,
-        text: elementName(elements, element),
+        text: elementName(elements, element) ?? capitalise(element.type),
       };
     },
     [api, elementName],
@@ -734,10 +753,66 @@ export default function Editor({
     return () => window.removeEventListener("keydown", onKey);
   }, [commentMode, popover]);
 
-  const leaveCommentMode = useCallback(() => {
-    setCommentMode(false);
+  const openCommentsList = useCallback(() => {
+    setPanelElement(null);
+    setCommentsView("list");
+    setCommentsOpen(true);
     setPopover(null);
+    setCommentMode(false);
   }, []);
+
+  const toggleCommentMode = useCallback(() => {
+    setCommentsOpen(false);
+    setPanelElement(null);
+    setPopover(null);
+    setCommentMode((on) => !on);
+  }, []);
+
+  const backToThreads = useCallback(() => {
+    setCommentsView("list");
+  }, []);
+
+  /** Framing the target must not change selection: onChange clears panelElement. */
+  const jumpToElement = useCallback(
+    (elementId: string) => {
+      const element = (api?.getSceneElements?.() ?? []).find(
+        (el: any) => el.id === elementId && !el.isDeleted,
+      );
+      if (element) {
+        api?.scrollToContent?.(element, {
+          fitToViewport: true,
+          viewportZoomFactor: 0.5,
+          animate: true,
+        });
+      }
+    },
+    [api],
+  );
+
+  const selectThread = useCallback(
+    (elementId: string) => {
+      const element = (api?.getSceneElements?.() ?? []).find(
+        (el: any) => el.id === elementId && !el.isDeleted,
+      );
+      setPanelElement(element ? describeElement(element) : null);
+      setCommentsView("detail");
+      if (element) jumpToElement(elementId);
+    },
+    [api, describeElement, jumpToElement],
+  );
+
+  const threads = buildThreads(
+    comments,
+    api?.getSceneElements?.() ?? [],
+    elementName,
+  );
+
+  useEffect(() => {
+    if (commentsView !== "detail" || !panelElement) return;
+    if (!threads.some((thread) => thread.elementId === panelElement.id)) {
+      backToThreads();
+    }
+  }, [commentsView, panelElement, threads, backToThreads]);
 
   /**
    * Comment writes go through the agent surface, not the canvas save. The file
@@ -897,15 +972,10 @@ export default function Editor({
             ›
           </button>
           <button
-            onClick={() => {
-              setCommentsOpen(false);
-              setPanelElement(null);
-              setPopover(null);
-              setCommentMode((on) => !on);
-            }}
-            title="Comment on the canvas: click a shape (Esc to leave)"
+            onClick={openCommentsList}
+            title="Browse all comments"
             className={`hairline ml-2 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] transition-colors ${
-              commentMode
+              commentsOpen
                 ? "bg-ink-800 text-chalk"
                 : "bg-ink-900 text-graphite hover:text-chalk"
             }`}
@@ -916,6 +986,19 @@ export default function Editor({
                 {commentTotals.open}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={toggleCommentMode}
+            title="Comment on the canvas: click a shape (Esc to leave)"
+            aria-label="Comment on the canvas"
+            className={`hairline ml-1 rounded-md px-2 py-1 text-xs transition-colors ${
+              commentMode
+                ? "bg-ink-800 text-chalk"
+                : "bg-ink-900 text-graphite hover:text-chalk"
+            }`}
+          >
+            ✎
           </button>
 
           <button
@@ -1034,29 +1117,38 @@ export default function Editor({
             point={popover.point}
             onAdd={(body) => writeComment(body, popover.element)}
             onUpdate={changeComment}
-            onOpenPanel={() => {
-              setPanelElement(popover.element);
-              setCommentsOpen(true);
-              leaveCommentMode();
-            }}
+            onBrowseAll={openCommentsList}
             onClose={() => setPopover(null)}
           />
         )}
 
         {commentsOpen && (
           <Comments
-            element={panelTarget}
-            comments={
-              panelTarget
-                ? comments.filter((comment) => comment.elementId === panelTarget.id)
-                : []
-            }
+            view={commentsView}
+            element={commentsView === "detail" ? panelElement : panelTarget}
+            comments={comments}
             sceneOpen={commentTotals.open}
+            threads={threads}
+            counts={threadCounts(threads)}
+            filter={filter}
+            query={query}
+            truncated={commentsTruncated}
+            activeElementId={panelTarget?.id ?? null}
+            status={commentsStatus}
+            onRetry={() => {
+              void refreshComments();
+            }}
+            onFilter={setFilter}
+            onQuery={setQuery}
+            onSelectThread={selectThread}
+            onBack={backToThreads}
+            onCommentMode={toggleCommentMode}
             onAdd={(body) => writeComment(body, panelTarget)}
             onUpdate={changeComment}
             onClose={() => {
               setCommentsOpen(false);
               setPanelElement(null);
+              setCommentsView("list");
             }}
           />
         )}

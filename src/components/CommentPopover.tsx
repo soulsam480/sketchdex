@@ -16,7 +16,7 @@ export default function CommentPopover({
   point,
   onAdd,
   onUpdate,
-  onOpenPanel,
+  onBrowseAll,
   onClose,
 }: {
   element: { id: string; type: string; text?: string };
@@ -24,7 +24,7 @@ export default function CommentPopover({
   point: { x: number; y: number };
   onAdd: (body: string) => Promise<void>;
   onUpdate: (comment: Comment, action: "resolve" | "reopen" | "delete") => Promise<void>;
-  onOpenPanel: () => void;
+  onBrowseAll: () => void;
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState("");
@@ -165,7 +165,7 @@ export default function CommentPopover({
         <div className="mt-1.5 flex items-center gap-2">
           <button
             type="button"
-            onClick={onOpenPanel}
+            onClick={onBrowseAll}
             className="label-mono normal-case transition-colors hover:text-chalk"
           >
             All comments

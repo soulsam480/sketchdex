@@ -1,31 +1,61 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Comment } from "../lib/store";
 import { capitalise } from "../lib/format";
+import type { Thread, ThreadFilter } from "../lib/commentThreads";
 import CommentRow from "./CommentRow";
+import CommentThreadList from "./CommentThreadList";
 
 /**
- * Comments on one element, opened from the scene header.
+ * The scene-wide comment browser and the thread for one element share an aside.
  *
- * Nothing is drawn on the canvas: a badge on every shape would turn a drawing
- * into a ticketing board. The panel follows the selection instead, reads the
- * comments that ride on that element, and writes through the agent surface so a
- * comment never races a geometry save.
+ * The list is the front door. A row opens the existing per-element thread, and
+ * Back returns to the list without closing the panel, so a filter survives the
+ * round trip. Nothing is drawn on the canvas: comments attach to the element
+ * itself and every write goes through the agent surface, never a canvas save.
  */
 
 type Props = {
+  view: "list" | "detail";
   element: { id: string; type: string; text?: string } | null;
   comments: Comment[];
   sceneOpen: number;
+  threads: Thread[];
+  counts: Record<ThreadFilter, number>;
+  filter: ThreadFilter;
+  query: string;
+  truncated: boolean;
+  activeElementId: string | null;
+  status: "loading" | "ready" | "error";
+  onRetry: () => void;
+  onFilter: (f: ThreadFilter) => void;
+  onQuery: (q: string) => void;
+  onSelectThread: (elementId: string) => void;
+  onBack: () => void;
+  onCommentMode: () => void;
   onAdd: (body: string) => Promise<void>;
   onUpdate: (comment: Comment, action: "resolve" | "reopen" | "delete") => Promise<void>;
   onClose: () => void;
 };
 
 export default function Comments({
+  view,
   element,
   comments,
   sceneOpen,
+  threads,
+  counts,
+  filter,
+  query,
+  truncated,
+  activeElementId,
+  status,
+  onRetry,
+  onFilter,
+  onQuery,
+  onSelectThread,
+  onBack,
+  onCommentMode,
   onAdd,
   onUpdate,
   onClose,
@@ -34,8 +64,26 @@ export default function Comments({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const open = comments.filter((comment) => comment.status === "open");
-  const resolved = comments.filter((comment) => comment.status === "resolved");
+  /**
+   * Editor keeps the panel and comment mode exclusive, so this listener is the
+   * only one mounted while the panel is up. Detail backs out first; the list
+   * closes the panel.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (view === "detail") onBack();
+      else onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [view, onBack, onClose]);
+
+  const detailComments = element
+    ? comments.filter((comment) => comment.elementId === element.id)
+    : [];
+  const open = detailComments.filter((comment) => comment.status === "open");
+  const resolved = detailComments.filter((comment) => comment.status === "resolved");
 
   const submit = async () => {
     const body = draft.trim();
@@ -67,10 +115,30 @@ export default function Comments({
   return (
     <aside className="hairline-l flex w-[292px] shrink-0 flex-col bg-ink-900">
       <header className="hairline-b flex items-center gap-2 px-3.5 py-2.5">
-        <span className="label-mono">Comments</span>
+        {view === "detail" && (
+          <button
+            onClick={onBack}
+            title="All comments"
+            aria-label="All comments"
+            className="rounded px-1 py-0.5 text-sm leading-none text-graphite transition-colors hover:bg-ink-800 hover:text-chalk"
+          >
+            ‹
+          </button>
+        )}
+        <span className="label-mono">
+          {view === "detail" ? "All comments" : "Comments"}
+        </span>
         <span className="label-mono ml-auto normal-case">
           {sceneOpen ? `${sceneOpen} open` : "none open"}
         </span>
+        <button
+          onClick={onCommentMode}
+          title="Comment on canvas"
+          aria-label="Comment on canvas"
+          className="rounded px-1.5 py-0.5 text-xs text-graphite transition-colors hover:bg-ink-800 hover:text-chalk"
+        >
+          ✎
+        </button>
         <button
           onClick={onClose}
           title="Close comments"
@@ -80,11 +148,47 @@ export default function Comments({
         </button>
       </header>
 
-      {element === null ? (
+      {status === "loading" ? (
         <p className="px-3.5 py-3 text-xs leading-relaxed text-graphite">
-          Select one element to comment on it. Comments attach to the element
-          itself, so they move, copy and undo with it.
+          Loading comments
         </p>
+      ) : status === "error" ? (
+        <div className="px-3.5 py-3">
+          <p className="text-xs leading-relaxed text-graphite">
+            Could not load comments.
+          </p>
+          <button
+            onClick={onRetry}
+            className="mt-2 rounded-md bg-ink-800 px-2 py-1 text-xs text-chalk transition-opacity hover:opacity-80"
+          >
+            Retry
+          </button>
+        </div>
+      ) : view === "list" ? (
+        <CommentThreadList
+          threads={threads}
+          filter={filter}
+          query={query}
+          counts={counts}
+          activeElementId={activeElementId}
+          truncated={truncated}
+          onFilter={onFilter}
+          onQuery={onQuery}
+          onSelect={onSelectThread}
+          onCommentMode={onCommentMode}
+        />
+      ) : element === null ? (
+        <div className="px-3.5 py-3">
+          <p className="text-xs leading-relaxed text-graphite">
+            This element is no longer in the scene.
+          </p>
+          <button
+            onClick={onBack}
+            className="mt-2 rounded-md bg-ink-800 px-2 py-1 text-xs text-chalk transition-opacity hover:opacity-80"
+          >
+            All comments
+          </button>
+        </div>
       ) : (
         <>
           <div className="hairline-b px-3.5 py-2">
@@ -120,7 +224,7 @@ export default function Comments({
               />
             ))}
 
-            {comments.length === 0 && (
+            {detailComments.length === 0 && (
               <p className="px-3.5 py-3 text-xs leading-relaxed text-graphite">
                 No comments on this element yet.
               </p>
